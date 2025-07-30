@@ -684,7 +684,7 @@ def rewrite_title_with_ai(original_title, content, api_key, api_type="openai"):
     print("⚠️ AI title rewrite failed after 3 attempts, keeping original")
     return original_title
 
-def extract_tistory_content_from_url(url):
+def extract_content_from_url(url):
     """티스토리 URL에서 콘텐츠 추출"""
     try:
         headers = {
@@ -714,11 +714,11 @@ def extract_tistory_content_from_url(url):
         if not title:
             title = "제목 없음"
         
-        # 작성자 정보 (티스토리 블로그 작성자)
-        author = "difks2004"  # 티스토리 블로그 작성자
+        # 작성자 정보 (AI 재작성용)
+        author = "윤신애"  # AI 재작성 글 작성자
         
-        # 티스토리 태그 추출
-        tags = ["티스토리", "블로그"]  # 기본 태그
+        # 기본 태그 설정
+        tags = ["뉴스", "이슈"]  # 기본 태그
         
         # 티스토리 내용 추출
         content_elem = soup.find('div', class_='entry-content')
@@ -748,18 +748,18 @@ def extract_tistory_content_from_url(url):
             if ad_div.get('data-tistory-react-app'):
                 ad_div.decompose()
         
-        # 이미지 URL 수집 (순서 무시하고 섞어서 수집 - 원본 위치와 완전히 다르게)
+        # 이미지 URL 수집 (티스토리 이미지)
         images = []
         for img in content_elem.find_all('img'):
             img_src = img.get('src')
-            if img_src and ('wp-content/uploads' in img_src or 'reportera.b-cdn.net' in img_src):
+            if img_src:
                 # 절대 URL로 변환
                 if img_src.startswith('//'):
                     img_src = 'https:' + img_src
                 elif img_src.startswith('/'):
-                    img_src = 'https://www.reportera.co.kr' + img_src
+                    img_src = 'https://difks2004.tistory.com' + img_src
                 elif not img_src.startswith('http'):
-                    img_src = 'https://www.reportera.co.kr/' + img_src
+                    img_src = 'https://difks2004.tistory.com/' + img_src
                 images.append(img_src)
         
         # 원본 이미지 순서를 완전히 섞어서 배치 (원본과 다르게)
@@ -1366,29 +1366,21 @@ def main():
         print(f"❌ Error downloading sitemap: {e}")
         sys.exit(1)
     
-    # URL 추출 (티스토리 사이트맵)
-    tistory_urls = []
+    # URL 추출 (티스토리 사이트맵에서 entry만)
+    entry_urls = []
     try:
         root = ET.fromstring(sitemap_content)
-        # 티스토리 사이트맵 네임스페이스
+        # 사이트맵 네임스페이스
         namespaces = {
             '': 'http://www.sitemaps.org/schemas/sitemap/0.9'
         }
         
         for url_elem in root.findall('.//url', namespaces):
             loc_elem = url_elem.find('loc', namespaces)
-            lastmod_elem = url_elem.find('lastmod', namespaces)
-            
             if loc_elem is not None:
                 url = loc_elem.text
-                lastmod = lastmod_elem.text if lastmod_elem is not None else None
-                
-                # entry 카테고리만 처리 (포스트 URL)
                 if url and '/entry/' in url:
-                    tistory_urls.append({
-                        'url': url,
-                        'lastmod': lastmod
-                    })
+                    entry_urls.append(url)
                     
     except Exception as e:
         print(f"⚠️ Error parsing XML: {e}")
@@ -1401,26 +1393,23 @@ def main():
                 if start > 4 and end > start:
                     url = line[start:end]
                     if '/entry/' in url:
-                        tistory_urls.append({
-                            'url': url,
-                            'lastmod': None
-                        })
+                        entry_urls.append(url)
     
-    # 티스토리 URL 처리
-    urls = [item['url'] for item in tistory_urls]  # URL만 추출
+    # URL 리스트 준비
+    urls = entry_urls
     import random
     random.shuffle(urls)  # 순서 섞기
     
     # 티스토리 글을 HTML로 변환 계획
     total_articles = len(urls)
     
-    print(f"📊 티스토리 글 HTML 변환 계획:")
-    print(f"   📝 티스토리 사이트맵에서 수집: {len(tistory_urls)}개")
+    print(f"📊 티스토리 글 AI 재작성 및 포스팅 계획:")
+    print(f"   📝 티스토리 사이트맵에서 수집: {len(entry_urls)}개")
     print(f"   🎯 총 처리 대상: {len(urls)}개")
-    print(f"   🌐 HTML 변환 예정: {total_articles}개 (100%)")
+    print(f"   🤖 AI 재작성 예정: {total_articles}개 (100%)")
     
-    # 🔥 티스토리 → HTML 최적화 변환 시작
-    print(f"🔍 티스토리 최적화 HTML 변환 시작 - {len(urls)}개 URL 처리")
+    # 🔥 티스토리 글 → AI 재작성 → 다른 티스토리에 포스팅
+    print(f"🔍 AI 재작성 후 자동 포스팅 시작 - {len(urls)}개 URL 처리")
     
     # 출력 디렉토리
     output_dir = 'output'
