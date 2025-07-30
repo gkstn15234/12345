@@ -985,12 +985,23 @@ def main():
     ai_api_key = get_env_var('OPENAI_API_KEY')
     
     # 디버깅: API 키 상태 확인
-    print(f"🔍 API Key Debug Info:")
+    print(f"[DEBUG] API Key Debug Info:")
     print(f"   - API key exists: {'Yes' if ai_api_key else 'No'}")
     print(f"   - API key length: {len(ai_api_key) if ai_api_key else 0}")
     print(f"   - API key starts with 'sk-': {'Yes' if ai_api_key and ai_api_key.startswith('sk-') else 'No'}")
+    print(f"   - HAS_OPENAI: {HAS_OPENAI}")
     if ai_api_key:
         print(f"   - API key preview: {ai_api_key[:10]}...")
+    
+    # OpenAI 라이브러리 테스트
+    if HAS_OPENAI:
+        try:
+            test_client = OpenAI(api_key=ai_api_key)
+            print(f"   - OpenAI client creation: OK")
+        except Exception as e:
+            print(f"   - OpenAI client creation: ERROR {e}")
+    else:
+        print(f"   - OpenAI library not available")
     
     # 처리된 기사 DB 초기화
     init_processed_db()
