@@ -25,37 +25,6 @@ def get_env_var(name, default=None):
     """환경변수 가져오기"""
     return os.environ.get(name, default)
 
-def rebuild_hugo_site():
-    """Hugo 사이트 재빌드 (새 기사를 메인페이지에 반영)"""
-    try:
-        import subprocess
-        print("🔨 Rebuilding Hugo site to reflect new articles...")
-        
-        # Hugo 빌드 명령 실행
-        result = subprocess.run(
-            ['hugo', '--gc', '--minify'], 
-            capture_output=True, 
-            text=True, 
-            timeout=30,
-            cwd=os.getcwd()
-        )
-        
-        if result.returncode == 0:
-            print("✅ Hugo site rebuilt successfully!")
-            return True
-        else:
-            print(f"⚠️ Hugo build warning: {result.stderr}")
-            return False
-            
-    except subprocess.TimeoutExpired:
-        print("⚠️ Hugo build timed out after 30 seconds")
-        return False
-    except FileNotFoundError:
-        print("⚠️ Hugo not found - install Hugo or ensure it's in PATH")
-        return False
-    except Exception as e:
-        print(f"⚠️ Hugo rebuild error: {e}")
-        return False
 
 def init_processed_db():
     """처리된 기사 추적을 위한 SQLite DB 초기화"""
@@ -931,44 +900,12 @@ alt 텍스트만 출력해주세요:
     
     return "기사 관련 이미지"
 
-def extract_h5_summary(content):
-    """AI 생성 콘텐츠에서 H5 요약 추출하고 본문에서 제거"""
-    lines = content.split('\n')
-    h5_summary = ""
-    content_without_h5 = []
-    
-    for line in lines:
-        if line.startswith('##### '):
-            # H5 내용 추출 (##### 제거하고 저장)
-            h5_content = line.replace('##### ', '').strip()
-            # <br> 태그를 공백으로 변환 (HTML 태그 제거)
-            h5_content = h5_content.replace('<br>', ' ').replace('<br/>', ' ').replace('<br />', ' ')
-            # **볼드 마크다운 제거**
-            h5_content = h5_content.replace('**', '')
-            # 특수문자 제거
-            special_chars = [':', '!', '?', '*', '#', '|', '&', '<', '>', '[', ']', '{', '}']
-            for char in special_chars:
-                h5_content = h5_content.replace(char, '')
-            # 연속된 공백 정리
-            h5_content = re.sub(r'\s+', ' ', h5_content).strip()
-            h5_summary = h5_content
-        else:
-            # H5가 아닌 내용은 본문에 유지
-            content_without_h5.append(line)
-    
-    # 빈 줄 정리
-    while content_without_h5 and not content_without_h5[0].strip():
-        content_without_h5.pop(0)
-    
-    return h5_summary, '\n'.join(content_without_h5)
+# 이 함수는 더 이상 사용하지 않음 - HTML 직접 생성으로 대체됨
 
-def generate_section_for_image(image_url, title, existing_content, api_key):
-    """남은 이미지를 위한 H2 소제목 + 본문 생성"""
+def generate_additional_content(title, existing_content, api_key):
+    """추가 콘텐츠 생성 (HTML 형태)"""
     if not api_key:
-        return {
-            'heading': "관련 정보",
-            'content': "해당 분야의 추가적인 동향과 분석 내용입니다."
-        }
+        return "<p>해당 분야의 추가적인 동향과 분석 내용입니다.</p>"
     
     try:
         if HAS_OPENAI:
@@ -978,372 +915,79 @@ def generate_section_for_image(image_url, title, existing_content, api_key):
 기사 제목: {title}
 기사 내용 요약: {existing_content[:500]}...
 
-위 기사와 관련된 추가 섹션을 만들어주세요.
+위 기사와 관련된 추가 HTML 콘텐츠를 만들어주세요.
 
 요구사항:
-1. H2 소제목 1개 (특수기호 없이, 자연스럽게)
-2. 본문 2-3문장 (기사와 연관성 있게, **중요 키워드는 굵게** 표시)
-3. 35-60대 독자층에게 유익한 내용
-4. **핵심 정보는 굵게** 처리하여 시인성 향상
+1. HTML 태그로 작성 (<p>, <strong>, <h2> 등)
+2. 35-60대 독자층에게 유익한 내용
+3. 2-3문단으로 구성
+4. **핵심 정보는 <strong> 태그로** 강조
 
-JSON 형식으로 응답:
-{{"heading": "소제목", "content": "본문 내용"}}
+HTML 형식으로만 응답해주세요:
 """
             
             response = client.chat.completions.create(
-                model="gpt-4.1",  # gpt-4o-mini → gpt-4.1로 변경
+                model="gpt-4.1",
                 messages=[
-                    {"role": "system", "content": "당신은 기사 작성 전문가입니다. 주어진 기사와 연관성 있는 추가 섹션을 만드는 전문가입니다. 핵심 정보는 **굵게** 표시하여 35-60대 독자층이 빠르게 이해할 수 있도록 합니다."},
+                    {"role": "system", "content": "당신은 HTML 콘텐츠 작성 전문가입니다. 기사와 연관성 있는 HTML 콘텐츠를 생성합니다."},
                     {"role": "user", "content": prompt}
                 ],
                 max_tokens=200,
                 temperature=0.7
             )
             
-            result = response.choices[0].message.content.strip()
-            try:
-                import json
-                section_data = json.loads(result)
-                return section_data
-            except:
-                # JSON 파싱 실패 시 기본값
-                return {
-                    'heading': "추가 분석",
-                    'content': "관련 업계의 동향과 전망에 대한 **추가 정보**입니다."
-                }
+            return response.choices[0].message.content.strip()
                 
     except Exception as e:
-        print(f"⚠️ 추가 섹션 생성 실패: {e}")
-        return {
-            'heading': "관련 동향",
-            'content': "해당 분야의 **최신 동향과 분석**을 제공합니다."
-        }
+        print(f"⚠️ 추가 콘텐츠 생성 실패: {e}")
+        return "<p>해당 분야의 <strong>최신 동향과 분석</strong>을 제공합니다.</p>"
 
-def insert_images_with_structure(content, cloudflare_images, title="", ai_api_key=None, category="economy"):
-    """원본과 완전히 다른 위치에 이미지 배치: 필터링 없이 랜덤 위치만 적용"""
-    if not cloudflare_images:
-        return content, None  # content와 thumbnail 정보 반환
+def convert_markdown_to_html(markdown_content):
+    """마크다운을 HTML로 변환 (티스토리용)"""
+    html_content = markdown_content
     
-    lines = content.split('\n')
-    result_lines = []
-    h5_count = 0
-    h2_count = 0
-    paragraph_count = 0
+    # H5 헤딩을 HTML로 변환
+    html_content = re.sub(r'^##### (.+)$', r'<h5>\1</h5>', html_content, flags=re.MULTILINE)
     
-    # 이미지를 완전히 새로운 규칙으로 배치하기 위해 이미지들을 다시 섞기
-    import random
-    shuffled_images = cloudflare_images.copy()
-    random.shuffle(shuffled_images)  # 원본 순서와 완전히 다르게
+    # H2 헤딩을 HTML로 변환
+    html_content = re.sub(r'^## (.+)$', r'<h2>\1</h2>', html_content, flags=re.MULTILINE)
     
-    # 모든 카테고리에서 필터링 없이 첫 번째 이미지를 썸네일로 사용
-    thumbnail_image = shuffled_images[0] if shuffled_images else None
-    section_images = shuffled_images[1:] if len(shuffled_images) > 1 else []
+    # 볼드 텍스트를 HTML로 변환
+    html_content = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', html_content)
     
-    print(f"🖼️ 이미지 필터링 없이 랜덤 배치: 썸네일 1개, 섹션 이미지 {len(section_images)}개")
-    if thumbnail_image:
-        print(f"📸 썸네일 선택: {thumbnail_image[:50]}...")
+    # 이미지를 HTML로 변환
+    html_content = re.sub(r'!\[([^\]]*)\]\(([^\)]+)\)', r'<img src="\2" alt="\1" style="max-width:100%;height:auto;">', html_content)
     
-    image_positions = {
-        'thumbnail': thumbnail_image,
-        'section_images': section_images
-    }
+    # 문단 분리를 위해 빈 줄을 <p> 태그로 감싸기
+    paragraphs = html_content.split('\n\n')
+    html_paragraphs = []
     
-    thumbnail_inserted = False
-    section_image_index = 0
+    for paragraph in paragraphs:
+        paragraph = paragraph.strip()
+        if paragraph:
+            # HTML 태그가 없는 일반 텍스트는 p 태그로 감싸기
+            if not re.match(r'^<[^>]+>', paragraph):
+                paragraph = f'<p>{paragraph}</p>'
+            html_paragraphs.append(paragraph)
     
-    for i, line in enumerate(lines):
-        result_lines.append(line)
-        
-        # H5 줄은 Hugo 테마에서 별도 처리하므로 이미지 삽입하지 않음
-        if line.startswith('##### '):
-            # H5 줄은 그대로 두되 이미지는 삽입하지 않음 (Hugo에서 처리)
-            pass
-        
-        # 문단 카운트 (일반 텍스트) - 이미지 삽입하지 않음
-        elif line.strip() and not line.startswith('#') and not line.startswith('!'):
-            paragraph_count += 1
-            # H2 뒤에만 이미지를 넣으므로 문단에는 이미지 삽입하지 않음
-        
-        # H2 소제목 처리 (모든 H2 뒤에 이미지 배치)
-        elif line.startswith('## '):
-            h2_count += 1
-            
-            # 모든 H2 소제목 뒤에 이미지 배치 (필터링 없이)
-            if section_image_index < len(image_positions['section_images']):
-                image_url = image_positions['section_images'][section_image_index]
-                section_image_index += 1
-                
-                if ai_api_key:
-                    alt_text = generate_contextual_alt_text(line, title, ai_api_key)
-                else:
-                    alt_text = line.replace('## ', '').replace('**', '').strip()
-                
-                result_lines.append("")
-                result_lines.append(f"![{alt_text}]({image_url})")
-                result_lines.append("*출처: 온라인 커뮤니티*")
-                result_lines.append("")
-                print(f"✅ H2 섹션에 이미지 배치: {image_url[:50]}...")
-    
-    # 남은 이미지들을 H2 소제목 + 이미지 + 본문 형태로 배치
-    remaining_images = image_positions['section_images'][section_image_index:]
-    if remaining_images:
-        print(f"📝 남은 이미지 {len(remaining_images)}개를 추가 섹션으로 생성 중...")
-        
-        # 기존 콘텐츠 요약 (AI 섹션 생성용)
-        existing_content = '\n'.join(result_lines)
-        
-        for idx, image_url in enumerate(remaining_images):
-            # AI로 섹션 생성
-            section_data = generate_section_for_image(image_url, title, existing_content, ai_api_key)
-            
-            # H2 소제목 추가
-            result_lines.append("")
-            result_lines.append(f"## {section_data['heading']}")
-            result_lines.append("")
-            
-            # 이미지 추가
-            if ai_api_key:
-                alt_text = generate_contextual_alt_text(section_data['content'], title, ai_api_key)
-            else:
-                alt_text = section_data['heading']
-            
-            result_lines.append(f"![{alt_text}]({image_url})")
-            result_lines.append("*출처: 온라인 커뮤니티*")
-            result_lines.append("")
-            
-            # 본문 추가
-            result_lines.append(section_data['content'])
-            result_lines.append("")
-            
-            print(f"✅ 추가 섹션 생성: {section_data['heading']} - {image_url[:50]}...")
-    
-    return '\n'.join(result_lines), thumbnail_image  # content와 thumbnail 정보 반환
+    return '\n\n'.join(html_paragraphs)
 
-def validate_yaml_string(text):
-    """YAML에서 안전한 문자열로 변환 (HTML 엔티티 제거, 특수문자 정리)"""
-    if not text:
-        return ""
-    
-    import html
-    # HTML 엔티티 디코딩 (&quot; → " 등)
-    safe_text = html.unescape(str(text))
-    
-    # 기본 정리 (HTML 구분자만 정리, 내용 따옴표는 보존)
-    safe_text = safe_text.replace('\n', ' ').replace('\r', ' ')
-    safe_text = safe_text.replace('---', '—').replace('```', '')
-    
-    # 특수문자 제거 (H5용)
-    special_chars = [':', '!', '?', '*', '#', '|', '&', '<', '>', '[', ']', '{', '}']
-    for char in special_chars:
-        safe_text = safe_text.replace(char, '')
-    
-    # 연속된 공백 정리
-    safe_text = re.sub(r'\s+', ' ', safe_text).strip()
-    
-    # 길이 제한
-    if len(safe_text) > 200:
-        safe_text = safe_text[:200] + "..."
-    
-    return safe_text
+# 이 함수는 더 이상 사용하지 않음 - HTML 직접 생성으로 대체됨
 
-def create_markdown_file(article_data, output_dir, article_index=0, general_count=0, total_count=0, cloudflare_account_id=None, cloudflare_api_token=None, ai_api_key=None):
-    """마크다운 파일 생성 (AI 재작성 및 이미지 처리 포함)"""
-    # 🛡️ 강화된 다단계 중복 체크
-    article_hash = get_article_hash(article_data['title'], article_data['url'])
-    
-    # 1. URL 기반 DB 체크 (최우선 - 가장 빠르고 확실)
-    db_path = 'processed_articles.db'
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    cursor.execute('SELECT COUNT(*) FROM processed_articles WHERE url = ?', (article_data['url'],))
-    url_exists = cursor.fetchone()[0] > 0
-    conn.close()
-    
-    if url_exists:
-        print(f"⏭️ Skipping duplicate article (URL in DB): {article_data['title'][:50]}...")
-        return False
-    
-    # 2. 전체 DB 기반 중복 체크 (해시 포함)
-    if is_article_processed(article_data['url'], article_data['title'], article_hash):
-        print(f"⏭️ Skipping duplicate article (Hash in DB): {article_data['title'][:50]}...")
-        return False
-    
-    # 3. 파일 기반 중복 체크 (안전장치 - 파일시스템과 DB 불일치 대비)
-    if check_existing_articles(output_dir, article_hash, article_data['title'], article_data['url']):
-        print(f"⏭️ Skipping duplicate article (Found in Files): {article_data['title'][:50]}...")
-        # DB에도 기록하여 다음번엔 더 빠르게 스킵
-        mark_article_processed(article_data['url'], article_data['title'], article_hash)
-        return False
-    
-    print(f"🤖 Processing NEW article with AI: {article_data['title'][:50]}...")
-    
-    # AI로 제목 재작성 (구조 유지, 내용 변경)
-    new_title = rewrite_title_with_ai(
-        article_data['title'],
-        article_data['content'],
-        ai_api_key
-    )
-    
-    # AI 제목 재작성 실패 시 기사 생성 건너뛰기
-    if not new_title or new_title == article_data['title']:
-        print(f"⚠️ AI title rewrite failed, skipping article: {article_data['title'][:50]}...")
-        return False
-    
-    # AI로 기사 재작성
-    rewritten_content = rewrite_with_ai(
-        article_data['content'], 
-        new_title,  # 새로운 제목 사용
-        ai_api_key
-    )
-    
-    # AI 기사 재작성 실패 시 기사 생성 건너뛰기
-    if not rewritten_content or rewritten_content == article_data['content']:
-        print(f"⚠️ AI content rewrite failed, skipping article: {new_title[:50]}...")
-        return False
-    
-    # H5 요약을 YAML용으로 분리
-    h5_summary, content_without_h5 = extract_h5_summary(rewritten_content)
-    print(f"📝 H5 요약 추출: {h5_summary[:50]}..." if h5_summary else "⚠️ H5 요약 없음")
-    
-    # AI로 태그 추가 생성
-    enhanced_tags = generate_ai_tags(
-        new_title,  # 새로운 제목 사용
-        article_data['content'],
-        article_data['tags'],
-        ai_api_key
-    )
-    
-    # Cloudflare에 이미지 업로드 (원본 순서와 완전히 다르게 - 역순으로)
-    cloudflare_images = []
-    if cloudflare_api_token and cloudflare_account_id and article_data['images']:
-        # 원본과 다르게 역순으로 업로드하여 위치 완전 변경
-        reversed_images = list(reversed(article_data['images'][:5]))  # 역순 + 최대 5개
-        print(f"📸 Uploading {len(reversed_images)} images to Cloudflare (in reverse order)...")
-        
-        for img_url in reversed_images:
-            cf_url = upload_to_cloudflare_images(img_url, cloudflare_api_token, cloudflare_account_id)
-            if cf_url:  # 성공한 경우만 추가 (원본 순서와 완전히 다름)
-                cloudflare_images.append(cf_url)
-            time.sleep(1)  # API 제한 고려
-    
-    # 카테고리 분배: 모든 기사를 automotive 카테고리로 배치
-    category = 'automotive'  # 모든 기사를 자동차 카테고리로 배치
-    print(f"🚗 자동차 카테고리 배치 ({article_index + 1}/{total_count})")
-    
-    # 이미지를 원본과 완전히 다른 위치에 배치 (필터링 없이 랜덤 위치만 적용)
-    final_content, thumbnail_image = insert_images_with_structure(content_without_h5, cloudflare_images, new_title, ai_api_key, category)
-    
-    # URL 슬러그 생성 (새 제목 기반)
-    title_slug = create_url_slug(new_title)
-    
-    # 카테고리별 디렉토리 생성
-    category_dir = os.path.join(output_dir, category)
-    os.makedirs(category_dir, exist_ok=True)
-    
-    # 파일명 생성: 카테고리/제목-영문.md
-    filename = f"{title_slug}.md"
-    filepath = os.path.join(category_dir, filename)
-    
-    # 파일명 중복 방지
-    counter = 1
-    while os.path.exists(filepath):
-        filename = f"{title_slug}-{counter}.md"
-        filepath = os.path.join(category_dir, filename)
-        counter += 1
-    
-    # 현재 날짜 (한국 시간대)
-    kst = timezone(timedelta(hours=9))
-    current_date = datetime.now(kst).strftime("%Y-%m-%dT%H:%M:%S+09:00")
-    
-    # YAML-safe description 생성
-    safe_description = validate_yaml_string(article_data['description'])
-    
-    # YAML-safe title 생성  
-    safe_title = validate_yaml_string(new_title)
-    
-    # 마크다운 생성 (UTF-8 안전한 author 필드)
-    safe_author = "윤신애"  # 하드코딩으로 인코딩 문제 방지
-    
-    # 날짜 포맷팅 (한국 시간대)
-    kst_date = datetime.now(kst)
-    formatted_date = kst_date.strftime("%Y년 %m월 %d일 %H:%M")
-    
-    # 카테고리 한글명
-    category_korean = "Economy" if category == "economy" else "Automotive"
-    
-    # YAML 안전한 제목 처리 (따옴표 이스케이프)
-    yaml_safe_title = new_title.replace('"', '\\"') if new_title else safe_title
-    yaml_safe_h5 = h5_summary.replace('"', '\\"') if h5_summary else ""
-    
-    markdown_content = f"""---
-title: "{yaml_safe_title}"
-description: "{safe_description}"
-date: {current_date}
-author: "{safe_author}"
-categories: ["{category}"]
-tags: {json.dumps(enhanced_tags, ensure_ascii=False)}
-hash: {article_hash}
-source_url: "{article_data['url']}"
-url: "/{category}/{title_slug}/"
-h5_summary: "{yaml_safe_h5}"
-"""
-    
-    # Cloudflare Images만 사용 (원본 이미지 사용하지 않음)
-    if cloudflare_images and thumbnail_image:
-        # 썸네일이 설정되어 있는 경우만 이미지 필드 추가
-        markdown_content += f'images: {json.dumps(cloudflare_images, ensure_ascii=False)}\n'
-        markdown_content += f'thumbnail: "{thumbnail_image}"\n'
-        markdown_content += f'image: "{thumbnail_image}"\n'  # Open Graph용
-        markdown_content += f'featured_image: "{thumbnail_image}"\n'  # 테마별 호환성
-        markdown_content += f'image_width: 1200\n'  # Google Discover 최적화
-        markdown_content += f'image_height: 630\n'  # Google Discover 최적화
-        print(f"📸 썸네일 설정: {thumbnail_image[:50]}...")
-    else:
-        # 썸네일이 None인 경우 (뉴스 텍스트 방지) 또는 이미지 없는 경우
-        if cloudflare_images:
-            print(f"📸 뉴스 텍스트 방지: 썸네일 없이 기사 생성")
-        else:
-            print(f"📸 Cloudflare 이미지 없음: 이미지 없이 기사 생성")
-    
-    # SEO 최적화 추가 필드
-    markdown_content += f'slug: "{title_slug}"\n'
-    markdown_content += f'type: "post"\n'
-    markdown_content += f'layout: "single"\n'
-    markdown_content += f'news_keywords: "{", ".join(enhanced_tags[:5])}"\n'  # Google News 최적화
-    markdown_content += f'robots: "index, follow"\n'  # 검색엔진 크롤링 허용
-    
-    markdown_content += f"""draft: false
----
-
-{final_content}
-"""
-    
-    # 파일 저장
-    try:
-        with open(filepath, 'w', encoding='utf-8') as f:
-            f.write(markdown_content)
-        
-        # 📝 DB에 처리 완료 기록 (파일 생성 성공 후에만)
-        mark_article_processed(article_data['url'], article_data['title'], article_hash)
-        
-        print(f"✅ Created: {category}/{os.path.basename(filepath)}")
-        
-        # Hugo 사이트 재빌드 (메인페이지에 새 기사 반영)
-        rebuild_hugo_site()
-        
-        return True
-        
-    except Exception as e:
-        print(f"❌ Failed to create file {filepath}: {e}")
-        return False
 
 def main():
     """메인 함수 - 티스토리 사이트맵 처리"""
-    # 환경변수에서 설정 읽기 (티스토리 사이트맵으로 변경)
+    # 환경변수에서 설정 읽기
     sitemap_url = get_env_var('SITEMAP_URL', 'https://difks2004.tistory.com/sitemap.xml')
-    cloudflare_account_id = get_env_var('CLOUDFLARE_ACCOUNT_ID', '5778a7b9867a82c2c6ad6d104d5ebb6d')
-    cloudflare_api_token = get_env_var('CLOUDFLARE_API_TOKEN', 'XLz-RMI1mpfrTEqLnKylT6t8tJEO7Drcx0zopcGf')
     ai_api_key = get_env_var('OPENAI_API_KEY')
+    
+    # 디버깅: API 키 상태 확인
+    print(f"🔍 API Key Debug Info:")
+    print(f"   - API key exists: {'Yes' if ai_api_key else 'No'}")
+    print(f"   - API key length: {len(ai_api_key) if ai_api_key else 0}")
+    print(f"   - API key starts with 'sk-': {'Yes' if ai_api_key and ai_api_key.startswith('sk-') else 'No'}")
+    if ai_api_key:
+        print(f"   - API key preview: {ai_api_key[:10]}...")
     
     # 처리된 기사 DB 초기화
     init_processed_db()
@@ -1351,10 +995,10 @@ def main():
     if len(sys.argv) > 1:
         sitemap_url = sys.argv[1]
     
-    print(f"🚀 티스토리 사이트맵 → HTML 변환 시작...")
-    print(f"📥 Sitemap: {sitemap_url}")
-    print(f"🤖 AI Rewrite: {'✅' if ai_api_key else '❌'}")
-    print(f"☁️ Cloudflare Images: {'✅' if cloudflare_api_token else '❌'}")
+    print(f"🚀 티스토리 글 AI 재작성 및 자동 포스팅 시작...")
+    print(f"📥 원본 사이트맵: {sitemap_url}")
+    print(f"🤖 AI 재작성: {'✅' if ai_api_key else '❌'}")
+    print(f"📝 포스팅 대상: https://talk45667.tistory.com/")
     
     # 사이트맵 다운로드
     try:
@@ -1459,20 +1103,78 @@ def main():
         article_data = extract_content_from_url(url)
         
         if article_data:
-            if create_markdown_file(
-                article_data, 
-                output_dir,
-                i,  # article_index
-                total_articles,  # total_articles
-                len(urls),  # total_count
-                cloudflare_account_id,
-                cloudflare_api_token,
-                ai_api_key
-            ):
-                processed += 1
-                print(f"🎯 Progress: {processed} processed, {skipped} skipped, {failed} failed")
-            else:
-                skipped += 1
+            # AI로 글 재작성
+            try:
+                if ai_api_key:
+                    # 제목 재작성
+                    new_title = rewrite_title_with_ai(
+                        article_data['title'],
+                        article_data['content'],
+                        ai_api_key
+                    )
+                    
+                    if new_title and new_title != article_data['title']:
+                        # 본문 재작성
+                        rewritten_content = rewrite_with_ai(
+                            article_data['content'], 
+                            new_title,
+                            ai_api_key
+                        )
+                        
+                        if rewritten_content and rewritten_content != article_data['content']:
+                            # 재작성된 글 데이터 준비
+                            rewritten_article = {
+                                'title': new_title,
+                                'content': rewritten_content,
+                                'tags': article_data.get('tags', []) + ['AI재작성', '자동포스팅']
+                            }
+                            
+                            # 바로 티스토리에 포스팅
+                            try:
+                                from tistory_selenium_poster import TistorySeleniumPoster
+                                poster = TistorySeleniumPoster()
+                                
+                                if poster.setup_driver(headless=True):
+                                    if poster.login_tistory():
+                                        if poster.write_post(
+                                            title=rewritten_article['title'],
+                                            content=rewritten_article['content'],
+                                            tags=rewritten_article['tags'],
+                                            is_draft=True
+                                        ):
+                                            processed += 1
+                                            print(f"✅ 티스토리 포스팅 성공: {new_title[:30]}...")
+                                        else:
+                                            failed += 1
+                                            print(f"❌ 티스토리 포스팅 실패: {new_title[:30]}...")
+                                    else:
+                                        failed += 1
+                                        print(f"❌ 티스토리 로그인 실패")
+                                    
+                                    if poster.driver:
+                                        poster.driver.quit()
+                                else:
+                                    failed += 1
+                                    print(f"❌ 브라우저 설정 실패")
+                                    
+                            except Exception as e:
+                                failed += 1
+                                print(f"❌ 포스팅 오류: {e}")
+                        else:
+                            failed += 1
+                            print(f"❌ AI 본문 재작성 실패")
+                    else:
+                        failed += 1
+                        print(f"❌ AI 제목 재작성 실패")
+                else:
+                    failed += 1
+                    print(f"❌ AI API 키가 없습니다")
+                    
+            except Exception as e:
+                failed += 1
+                print(f"❌ 글 처리 오류: {e}")
+                
+            print(f"🎯 Progress: {processed} processed, {skipped} skipped, {failed} failed")
         else:
             failed += 1
             print(f"❌ Failed to extract content from: {url}")
@@ -1508,117 +1210,12 @@ def main():
     except Exception as e:
         print(f"⚠️ Could not check database: {e}")
     
-    # 🚀 티스토리 자동 포스팅
-    print(f"\n🚀 티스토리 자동 포스팅 시작...")
-    try:
-        # 처리된 글들을 티스토리 포스팅용으로 변환
-        tistory_articles = []
-        
-        # 최근 생성된 마크다운 파일들을 읽어서 포스팅 데이터 생성
-        content_dir = 'content'
-        if os.path.exists(content_dir):
-            for root, dirs, files in os.walk(content_dir):
-                for file in files:
-                    if file.endswith('.md'):
-                        filepath = os.path.join(root, file)
-                        try:
-                            with open(filepath, 'r', encoding='utf-8') as f:
-                                md_content = f.read()
-                            
-                            # YAML 헤더에서 메타데이터 추출
-                            if md_content.startswith('---'):
-                                parts = md_content.split('---', 2)
-                                if len(parts) >= 3:
-                                    yaml_header = parts[1]
-                                    content_body = parts[2].strip()
-                                    
-                                    # 제목 추출
-                                    title_match = re.search(r'title:\s*"([^"]+)"', yaml_header)
-                                    title = title_match.group(1) if title_match else "제목 없음"
-                                    
-                                    # 태그 추출
-                                    tags_match = re.search(r'tags:\s*\[(.*?)\]', yaml_header)
-                                    tags = []
-                                    if tags_match:
-                                        tags_str = tags_match.group(1)
-                                        tags = [tag.strip().strip('"\'') for tag in tags_str.split(',')]
-                                    
-                                    # 마크다운을 HTML로 간단 변환
-                                    html_content = content_body.replace('\n\n', '</p><p>')
-                                    html_content = f"<p>{html_content}</p>"
-                                    html_content = re.sub(r'## ([^\n]+)', r'<h2>\1</h2>', html_content)
-                                    html_content = re.sub(r'\*\*([^*]+)\*\*', r'<strong>\1</strong>', html_content)
-                                    
-                                    tistory_articles.append({
-                                        'title': title,
-                                        'content': html_content,
-                                        'tags': tags + ['AI재작성', '자동포스팅']
-                                    })
-                                    
-                                    # 최대 3개까지만 포스팅 (안전을 위해)
-                                    if len(tistory_articles) >= 3:
-                                        break
-                        except Exception as e:
-                            print(f"⚠️ 파일 읽기 오류 ({file}): {e}")
-                            continue
-                
-                if len(tistory_articles) >= 3:
-                    break
-        
-        # 티스토리 포스팅 실행
-        if tistory_articles:
-            print(f"📝 {len(tistory_articles)}개 글을 티스토리에 임시발행으로 포스팅합니다...")
-            
-            # Selenium 포스터 import 및 실행
-            try:
-                from tistory_selenium_poster import TistorySeleniumPoster
-                
-                poster = TistorySeleniumPoster()
-                success_count, fail_count = poster.auto_post_articles(
-                    tistory_articles, 
-                    headless=True  # GitHub Actions에서는 headless 모드
-                )
-                
-                print(f"✅ 티스토리 포스팅 완료!")
-                print(f"   성공: {success_count}개")
-                print(f"   실패: {fail_count}개")
-                
-            except ImportError:
-                print("⚠️ Selenium 모듈을 찾을 수 없습니다. pip install selenium 필요")
-            except Exception as e:
-                print(f"⚠️ 티스토리 포스팅 오류: {e}")
-        else:
-            print("⚠️ 포스팅할 글이 없습니다.")
-            
-    except Exception as e:
-        print(f"⚠️ 티스토리 포스팅 처리 오류: {e}")
-        print("📧 Skipping Tistory posting...")
+    print(f"\n🎉 티스토리 자동 포스팅 완료!")
+    print(f"✅ 성공: {processed}개")  
+    print(f"❌ 실패: {failed}개")
+    print(f"⏭️ 건너뜀: {skipped}개")
     
-    # 📧 이메일 보고서 발송
-    print(f"\n📧 Sending email report...")
-    try:
-        # send_email.py의 함수 import 및 실행
-        import importlib.util
-        
-        # send_email.py 모듈 동적 로드
-        spec = importlib.util.spec_from_file_location("send_email", "send_email.py")
-        if spec and spec.loader:
-            send_email_module = importlib.util.module_from_spec(spec)
-            sys.modules["send_email"] = send_email_module
-            spec.loader.exec_module(send_email_module)
-            
-            # 이메일 보고서 발송
-            email_success = send_email_module.send_report_email()
-            if email_success:
-                print("✅ Email report sent successfully!")
-            else:
-                print("⚠️ Email report failed to send")
-        else:
-            print("⚠️ Could not load send_email.py module")
-            
-    except Exception as e:
-        print(f"⚠️ Email sending error: {e}")
-        print("📧 Skipping email report...")
+    print(f"🔚 작업 완료!")
 
 if __name__ == "__main__":
     main() 
