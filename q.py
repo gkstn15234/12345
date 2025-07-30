@@ -1463,7 +1463,7 @@ def main():
                 article_data, 
                 output_dir,
                 i,  # article_index
-                automotive_count,  # automotive_count (기존 general_count)
+                total_articles,  # total_articles
                 len(urls),  # total_count
                 cloudflare_account_id,
                 cloudflare_api_token,
