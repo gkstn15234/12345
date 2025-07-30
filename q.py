@@ -364,9 +364,9 @@ def upload_to_cloudflare_images(image_url, api_token, account_id):
         
         result = response.json()
         if result.get('success'):
-            # Cloudflare Images URL 반환 (새로운 account hash 사용)
+            # Cloudflare Images URL 반환 (하드코딩된 account hash 사용)
             image_id = result['result']['id']
-            account_hash = "BhPWbivJAhTvor9c-8lV2w"  # 새로운 account hash
+            account_hash = "BhPWbivJAhTvor9c-8lV2w"  # 하드코딩된 account hash
             cloudflare_url = f"https://imagedelivery.net/{account_hash}/{image_id}/public"
             print(f"📸 Cloudflare image URL: {cloudflare_url}")
             return cloudflare_url
@@ -916,7 +916,329 @@ alt 텍스트만 출력해주세요:
     
     return "기사 관련 이미지"
 
-# 이 함수는 더 이상 사용하지 않음 - HTML 직접 생성으로 대체됨
+def generate_article_html(article_data, cloudflare_images=None):
+    """티스토리 포스팅용 HTML 생성"""
+    title = article_data.get('title', '제목 없음')
+    content = article_data.get('content', '')
+    tags = article_data.get('tags', [])
+    original_url = article_data.get('url', '')
+    
+    # 이미지가 있으면 첫 번째 이미지를 썸네일로 사용
+    thumbnail_img = ""
+    if cloudflare_images:
+        thumbnail_img = f'<img src="{cloudflare_images[0]}" alt="썸네일" style="max-width:100%;height:auto;margin-bottom:20px;">'
+    
+    # 본문에 이미지 삽입 (랜덤 위치)
+    content_with_images = content
+    if cloudflare_images and len(cloudflare_images) > 1:
+        # H2 태그 뒤에 이미지 삽입
+        import re
+        h2_pattern = r'(## [^\n]+)'
+        def replace_h2_with_image(match):
+            nonlocal cloudflare_images
+            if len(cloudflare_images) > 1:
+                img_url = cloudflare_images.pop(1)  # 두 번째 이미지부터 사용
+                return f'{match.group(1)}\n\n<img src="{img_url}" alt="관련 이미지" style="max-width:100%;height:auto;margin:20px 0;">\n'
+            return match.group(1)
+        
+        content_with_images = re.sub(h2_pattern, replace_h2_with_image, content_with_images)
+    
+    # 마크다운을 HTML로 변환
+    html_content = convert_markdown_to_html(content_with_images)
+    
+    # 완전한 HTML 페이지 생성
+    full_html = f"""<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{title}</title>
+    <style>
+        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.6; }}
+        h1 {{ color: #333; border-bottom: 2px solid #007acc; padding-bottom: 10px; }}
+        h2 {{ color: #555; margin-top: 30px; }}
+        h5 {{ background: #f8f9fa; padding: 15px; border-left: 4px solid #007acc; margin: 20px 0; }}
+        .tags {{ background: #f1f3f4; padding: 10px; border-radius: 5px; margin: 20px 0; }}
+        .tag {{ display: inline-block; background: #007acc; color: white; padding: 3px 8px; margin: 2px; border-radius: 3px; font-size: 12px; }}
+        .original-url {{ color: #666; font-size: 12px; margin-top: 20px; }}
+        .copy-btn {{ background: #007acc; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 10px 5px 0 0; }}
+        .copy-btn:hover {{ background: #005a9e; }}
+    </style>
+</head>
+<body>
+    <h1>{title}</h1>
+    
+    {thumbnail_img}
+    
+    <div class="content">
+        {html_content}
+    </div>
+    
+    <div class="tags">
+        <strong>태그:</strong>
+        {' '.join([f'<span class="tag">{tag}</span>' for tag in tags])}
+    </div>
+    
+    <div class="original-url">
+        <strong>원본 URL:</strong> <a href="{original_url}" target="_blank">{original_url}</a>
+    </div>
+    
+    <button class="copy-btn" onclick="copyContent()">티스토리용 HTML 복사</button>
+    <button class="copy-btn" onclick="downloadHtml()">HTML 파일 다운로드</button>
+    
+    <script>
+        function copyContent() {{
+            const content = `{html_content.replace('`', '\\`')}`;
+            navigator.clipboard.writeText(content).then(() => {{
+                alert('티스토리용 HTML이 클립보드에 복사되었습니다!');
+            }});
+        }}
+        
+        function downloadHtml() {{
+            const content = document.documentElement.outerHTML;
+            const blob = new Blob([content], {{ type: 'text/html' }});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '{title.replace(" ", "_")}.html';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }}
+    </script>
+</body>
+</html>"""
+    
+    return full_html
+
+def generate_index_html(articles_info):
+    """전체 글 목록을 보여주는 인덱스 홈페이지 생성"""
+    articles_html = ""
+    
+    for i, article in enumerate(articles_info, 1):
+        title = article.get('title', '제목 없음')
+        filename = article.get('filename', '')
+        tags = article.get('tags', [])
+        thumbnail = article.get('thumbnail', '')
+        
+        thumbnail_img = ""
+        if thumbnail:
+            thumbnail_img = f'<img src="{thumbnail}" alt="썸네일" style="width:200px;height:120px;object-fit:cover;border-radius:8px;">'
+        
+        articles_html += f"""
+        <div class="article-card">
+            <div class="article-thumbnail">
+                {thumbnail_img}
+            </div>
+            <div class="article-info">
+                <h3><a href="{filename}" target="_blank">{title}</a></h3>
+                <div class="article-tags">
+                    {' '.join([f'<span class="tag">{tag}</span>' for tag in tags[:3]])}
+                </div>
+                <div class="article-actions">
+                    <a href="{filename}" class="btn-view" target="_blank">미리보기</a>
+                    <button class="btn-copy" onclick="copyArticleUrl('{filename}')">링크 복사</button>
+                </div>
+            </div>
+        </div>
+        """
+    
+    index_html = f"""<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 재작성 글 목록 - 티스토리 포스팅용</title>
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{ 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            background: #f8f9fa; 
+            color: #333;
+            line-height: 1.6;
+        }}
+        .header {{ 
+            background: linear-gradient(135deg, #007acc 0%, #005a9e 100%); 
+            color: white; 
+            padding: 40px 20px; 
+            text-align: center; 
+        }}
+        .header h1 {{ font-size: 2.5rem; margin-bottom: 10px; }}
+        .header p {{ font-size: 1.1rem; opacity: 0.9; }}
+        .container {{ max-width: 1200px; margin: 0 auto; padding: 40px 20px; }}
+        .stats {{ 
+            display: flex; 
+            justify-content: center; 
+            gap: 40px; 
+            margin-bottom: 40px; 
+            flex-wrap: wrap;
+        }}
+        .stat-card {{ 
+            background: white; 
+            padding: 20px; 
+            border-radius: 10px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+            text-align: center; 
+            min-width: 150px;
+        }}
+        .stat-number {{ font-size: 2rem; font-weight: bold; color: #007acc; }}
+        .stat-label {{ color: #666; margin-top: 5px; }}
+        .articles-grid {{ 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); 
+            gap: 20px; 
+        }}
+        .article-card {{ 
+            background: white; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+            overflow: hidden; 
+            transition: transform 0.2s, box-shadow 0.2s; 
+            display: flex;
+            flex-direction: row;
+        }}
+        .article-card:hover {{ 
+            transform: translateY(-2px); 
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15); 
+        }}
+        .article-thumbnail {{ 
+            flex-shrink: 0; 
+            width: 200px; 
+            height: 120px; 
+            background: #f1f3f4; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+        }}
+        .article-info {{ 
+            padding: 20px; 
+            flex: 1; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: space-between;
+        }}
+        .article-info h3 {{ 
+            margin-bottom: 10px; 
+            line-height: 1.4;
+        }}
+        .article-info h3 a {{ 
+            color: #333; 
+            text-decoration: none; 
+            font-size: 1.1rem;
+        }}
+        .article-info h3 a:hover {{ color: #007acc; }}
+        .article-tags {{ margin-bottom: 15px; }}
+        .tag {{ 
+            display: inline-block; 
+            background: #e9f4ff; 
+            color: #007acc; 
+            padding: 3px 8px; 
+            margin: 2px; 
+            border-radius: 4px; 
+            font-size: 11px; 
+            font-weight: 500;
+        }}
+        .article-actions {{ display: flex; gap: 10px; }}
+        .btn-view, .btn-copy {{ 
+            padding: 8px 16px; 
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-size: 12px; 
+            font-weight: 500; 
+            text-decoration: none; 
+            transition: all 0.2s;
+        }}
+        .btn-view {{ 
+            background: #007acc; 
+            color: white; 
+        }}
+        .btn-view:hover {{ background: #005a9e; }}
+        .btn-copy {{ 
+            background: #f1f3f4; 
+            color: #333; 
+        }}
+        .btn-copy:hover {{ background: #e9ecef; }}
+        .footer {{ 
+            background: #333; 
+            color: white; 
+            text-align: center; 
+            padding: 20px; 
+            margin-top: 60px; 
+        }}
+        @media (max-width: 768px) {{
+            .header h1 {{ font-size: 2rem; }}
+            .stats {{ gap: 20px; }}
+            .articles-grid {{ grid-template-columns: 1fr; }}
+            .article-card {{ flex-direction: column; }}
+            .article-thumbnail {{ width: 100%; height: 180px; }}
+        }}
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>🤖 AI 재작성 글 목록</h1>
+        <p>티스토리 원본 글을 AI로 재창작한 고품질 콘텐츠 모음</p>
+    </header>
+    
+    <div class="container">
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number">{len(articles_info)}</div>
+                <div class="stat-label">총 글 수</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{sum(1 for article in articles_info if article.get('thumbnail'))}</div>
+                <div class="stat-label">이미지 포함</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">100%</div>
+                <div class="stat-label">AI 재작성</div>
+            </div>
+        </div>
+        
+        <div class="articles-grid">
+            {articles_html}
+        </div>
+    </div>
+    
+    <footer class="footer">
+        <p>&copy; 2025 AI 재작성 글 목록 | Powered by GPT-4.1 & Cloudflare</p>
+    </footer>
+    
+    <script>
+        function copyArticleUrl(filename) {{
+            const url = window.location.origin + '/' + filename;
+            navigator.clipboard.writeText(url).then(() => {{
+                alert('링크가 클립보드에 복사되었습니다!\\n' + url);
+            }});
+        }}
+        
+        // 페이지 로드 시 통계 애니메이션
+        document.addEventListener('DOMContentLoaded', function() {{
+            const numbers = document.querySelectorAll('.stat-number');
+            numbers.forEach(number => {{
+                const target = number.textContent.replace('%', '');
+                if (!isNaN(target)) {{
+                    let current = 0;
+                    const increment = target / 20;
+                    const timer = setInterval(() => {{
+                        current += increment;
+                        if (current >= target) {{
+                            current = target;
+                            clearInterval(timer);
+                        }}
+                        number.textContent = target.includes('%') ? Math.round(current) + '%' : Math.round(current);
+                    }}, 50);
+                }}
+            }});
+        }});
+    </script>
+</body>
+</html>"""
+    
+    return index_html
 
 def generate_additional_content(title, existing_content, api_key):
     """추가 콘텐츠 생성 (HTML 형태)"""
@@ -997,6 +1319,11 @@ def main():
     sitemap_url = get_env_var('SITEMAP_URL', 'https://difks2004.tistory.com/sitemap.xml')
     ai_api_key = get_env_var('OPENAI_API_KEY')
     
+    # Cloudflare Images 설정 (하드코딩)
+    cloudflare_account_id = "5778a7b9867a82c2c6ad6d104d5ebb6d"
+    cloudflare_api_token = get_env_var('CLOUDFLARE_API_TOKEN')  # 환경변수에서 가져옴
+    cloudflare_account_hash = "BhPWbivJAhTvor9c-8lV2w"
+    
     # 디버깅: API 키 상태 확인
     print(f"[DEBUG] API Key Debug Info:")
     print(f"   - API key exists: {'Yes' if ai_api_key else 'No'}")
@@ -1022,10 +1349,11 @@ def main():
     if len(sys.argv) > 1:
         sitemap_url = sys.argv[1]
     
-    print(f"🚀 티스토리 글 AI 재작성 및 자동 포스팅 시작...")
+    print(f"🚀 티스토리 글 AI 재작성 및 HTML 생성 시작...")
     print(f"📥 원본 사이트맵: {sitemap_url}")
     print(f"🤖 AI 재작성: {'✅' if ai_api_key else '❌'}")
-    print(f"📝 포스팅 대상: https://talk45667.tistory.com/")
+    print(f"☁️ Cloudflare Images: {'✅' if cloudflare_api_token else '❌'}")
+    print(f"📄 HTML 파일 저장: output/ 폴더")
     
     # 사이트맵 다운로드
     try:
@@ -1111,8 +1439,11 @@ def main():
     skipped = 0
     failed = 0
     
-    # 🧪 테스트: 첫 번째 글만 처리
-    urls = urls[:1]
+    # 생성된 글 정보 저장 (인덱스 페이지용)
+    generated_articles = []
+    
+    # 모든 글 처리 (테스트 모드 해제)
+    # urls = urls[:1]  # 테스트 완료
     
     for i, url in enumerate(urls):
         print(f"\n📄 [{i+1}/{len(urls)}] Processing: {url.split('/')[-2:]}")
@@ -1156,9 +1487,61 @@ def main():
                             rewritten_article = {
                                 'title': new_title,
                                 'content': rewritten_content,
-                                'tags': article_data.get('tags', []) + ['AI재작성', '자동포스팅']
+                                'tags': article_data.get('tags', []) + ['AI재작성', '자동포스팅'],
+                                'url': url
                             }
                             
+                            # Cloudflare에 이미지 업로드
+                            cloudflare_images = []
+                            if cloudflare_api_token and article_data.get('images'):
+                                print(f"📸 Uploading {len(article_data['images'])} images to Cloudflare...")
+                                for img_url in article_data['images'][:5]:  # 최대 5개
+                                    cf_url = upload_to_cloudflare_images(img_url, cloudflare_api_token, cloudflare_account_id)
+                                    if cf_url:
+                                        cloudflare_images.append(cf_url)
+                                    time.sleep(1)  # API 제한 고려
+                            
+                            # HTML 파일 생성
+                            html_content = generate_article_html(rewritten_article, cloudflare_images)
+                            
+                            # HTML 파일 저장
+                            output_dir = 'output'
+                            os.makedirs(output_dir, exist_ok=True)
+                            
+                            # 파일명 생성 (안전한 파일명으로 변환)
+                            safe_filename = re.sub(r'[^\w\s-]', '', new_title)
+                            safe_filename = re.sub(r'[-\s]+', '-', safe_filename)
+                            safe_filename = safe_filename.strip('-')[:50]  # 길이 제한
+                            
+                            html_filepath = os.path.join(output_dir, f"{safe_filename}.html")
+                            
+                            # 파일명 중복 방지
+                            counter = 1
+                            while os.path.exists(html_filepath):
+                                html_filepath = os.path.join(output_dir, f"{safe_filename}-{counter}.html")
+                                counter += 1
+                            
+                            try:
+                                with open(html_filepath, 'w', encoding='utf-8') as f:
+                                    f.write(html_content)
+                                print(f"✅ HTML 파일 생성: {html_filepath}")
+                                processed += 1
+                                
+                                # 인덱스 페이지용 정보 저장
+                                generated_articles.append({
+                                    'title': new_title,
+                                    'filename': os.path.basename(html_filepath),
+                                    'tags': rewritten_article['tags'],
+                                    'thumbnail': cloudflare_images[0] if cloudflare_images else '',
+                                    'url': url
+                                })
+                                
+                            except Exception as e:
+                                print(f"❌ HTML 파일 생성 실패: {e}")
+                                failed += 1
+                            
+                            # 원래 티스토리 포스팅 코드 (주석 처리)
+                            """
                             # 바로 티스토리에 포스팅
                             try:
                                 from tistory_selenium_poster import TistorySeleniumPoster
@@ -1190,6 +1573,7 @@ def main():
                             except Exception as e:
                                 failed += 1
                                 print(f"❌ 포스팅 오류: {e}")
+                            """
                         else:
                             failed += 1
                             print(f"❌ AI 본문 재작성 실패")
@@ -1240,10 +1624,35 @@ def main():
     except Exception as e:
         print(f"⚠️ Could not check database: {e}")
     
-    print(f"\n🎉 티스토리 자동 포스팅 완료!")
+    # articles.json 파일 생성 (JavaScript용)
+    if generated_articles:
+        try:
+            articles_data = {
+                "meta": {
+                    "total_articles": len(generated_articles),
+                    "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "with_images": sum(1 for article in generated_articles if article.get('thumbnail')),
+                    "ai_rewritten": "100%"
+                },
+                "articles": generated_articles
+            }
+            
+            json_filepath = os.path.join(output_dir, 'articles.json')
+            with open(json_filepath, 'w', encoding='utf-8') as f:
+                json.dump(articles_data, f, ensure_ascii=False, indent=2)
+            
+            print(f"\n📄 articles.json 생성: {json_filepath}")
+            print(f"🔗 JavaScript에서 사용할 수 있는 데이터 파일이 생성되었습니다.")
+            
+        except Exception as e:
+            print(f"❌ articles.json 생성 실패: {e}")
+
+    print(f"\n🎉 HTML 파일 생성 완료!")
     print(f"✅ 성공: {processed}개")  
     print(f"❌ 실패: {failed}개")
     print(f"⏭️ 건너뜀: {skipped}개")
+    print(f"📁 출력 폴더: output/")
+    print(f"📄 데이터 파일: output/articles.json")
     
     print(f"🔚 작업 완료!")
 
