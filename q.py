@@ -567,7 +567,11 @@ def rewrite_title_with_ai(original_title, content, api_key, api_type="openai"):
             if api_type == "openai" and HAS_OPENAI:
                 client = OpenAI(api_key=api_key)
                 
-                prompt = f"""
+                # 따옴표 여부에 따라 다른 프롬프트 사용
+                has_quotes = '"' in original_title or "'" in original_title
+                
+                if has_quotes:
+                    prompt = f"""
 원본 제목의 **정확한 구조와 문법을 100% 완벽하게 유지**하되, 본문 내용에 맞게 **따옴표 안의 핵심 내용만 변경**해주세요.
 
 원본 제목: {original_title}
@@ -575,35 +579,34 @@ def rewrite_title_with_ai(original_title, content, api_key, api_type="openai"):
 본문 내용 (핵심만):
 {content[:1000]}...
 
-**절대 엄수 요구사항 (위반 시 실패):**
-
+**절대 엄수 요구사항:**
 1. **따옴표 완전 보존**: "큰따옴표", '작은따옴표' 개수와 위치 절대 변경 금지
-2. **구두점 완전 보존**: ..(두 점), ,(쉼표), -(하이픈), …(말줄임표) 등 모든 기호 그대로
-3. **조사/어미 완전 보존**: ~다더니, ~라더니, ~에서, ~의, ~를, ~이, ~로 등 모든 조사와 어미 그대로
-4. **문장 구조 완전 보존**: [인용문].. [설명], '[감정표현]' 패턴 100% 유지
-5. **자연스러운 한국어**: "민간 이 안되어 있니" 같은 부자연스러운 표현 절대 금지
-6. **따옴표 누락 절대 금지**: 원본에 있는 모든 따옴표는 반드시 유지
+2. **구두점 완전 보존**: 모든 기호 그대로
+3. **조사/어미 완전 보존**: 모든 조사와 어미 그대로
+4. **따옴표 안의 내용만 변경** 허용
 
-**변경 허용 범위:**
-- 따옴표 안의 핵심 단어/문구만 본문 내용에 맞게 변경
-- 고유명사(기업명, 제품명, 지역명)를 본문 내용에 맞게 변경
-- 업계/분야명을 본문 내용에 맞게 변경
+본문 내용에 맞는 제목만 출력해주세요:
+"""
+                else:
+                    prompt = f"""
+원본 제목의 **정확한 구조와 문법을 유지**하되, 본문 내용에 맞게 **핵심 키워드만 변경**해주세요.
 
-**금지사항:**
-- 문법 구조 변경 절대 금지
-- 새로운 조사나 어미 추가 금지  
-- 따옴표 위치나 개수 변경 금지
-- 구두점 추가/삭제/이동 금지
-- 따옴표 누락 절대 금지
+원본 제목: {original_title}
 
-**예시 (구조만 참고):**
-원본: "월세로 자동차 한 대씩 따박따박"… 서울 아파트 64% 월세 계약, 전년 대비 29% 증...
-변경: "월세로 럭셔리카 한 대값씩 나간다".. 서울 아파트 64% 월세 계약, 전년 대비 29% 증...
+본문 내용 (핵심만):
+{content[:1000]}...
 
-원본: A업계 최고라더니".. B에서 드러난 C의 'D'...
-변경: X업계 최고라더니".. Y에서 드러난 Z의 'W'...
+**요구사항:**
+1. **따옴표 추가 금지**: 원본에 없는 따옴표는 절대 추가하지 마세요
+2. **구조 유지**: 원본과 같은 문장 구조 유지
+3. **키워드 변경**: 본문 내용에 맞는 키워드로만 변경
+4. **자연스러운 한국어**: 문법적으로 올바른 제목
 
-본문 내용에 맞는 **정확하고 자연스러운** 제목만 출력해주세요:
+**예시:**
+원본: 도루묵 제철 나오는 시기 도루묵의 효능 요리법 보관법
+변경: 갈치 제철 나오는 시기 갈치의 효능 요리법 보관법
+
+본문 내용에 맞는 제목만 출력해주세요:
 """
                 
                 response = client.chat.completions.create(
@@ -618,27 +621,37 @@ def rewrite_title_with_ai(original_title, content, api_key, api_type="openai"):
                 
                 rewritten_title = response.choices[0].message.content.strip()
                 
-                # 기본 검증: 따옴표 개수 확인
-                original_double_quotes = original_title.count('"')
-                original_single_quotes = original_title.count("'")
-                rewritten_double_quotes = rewritten_title.count('"')
-                rewritten_single_quotes = rewritten_title.count("'")
+                # 따옴표가 있는 경우에만 엄격한 검증
+                if has_quotes:
+                    original_double_quotes = original_title.count('"')
+                    original_single_quotes = original_title.count("'")
+                    rewritten_double_quotes = rewritten_title.count('"')
+                    rewritten_single_quotes = rewritten_title.count("'")
+                    
+                    if (original_double_quotes != rewritten_double_quotes or 
+                        original_single_quotes != rewritten_single_quotes):
+                        print(f"⚠️ 따옴표 개수 불일치 (시도 {attempt + 1}): 원본 \"{original_double_quotes}, '{original_single_quotes} vs 재작성 \"{rewritten_double_quotes}, '{rewritten_single_quotes}, 재시도...")
+                        continue
+                else:
+                    # 따옴표가 없는 제목: 새로운 따옴표가 추가되지 않았는지만 확인
+                    rewritten_double_quotes = rewritten_title.count('"')
+                    rewritten_single_quotes = rewritten_title.count("'")
+                    
+                    if rewritten_double_quotes > 0 or rewritten_single_quotes > 0:
+                        print(f"⚠️ 원본에 없던 따옴표 추가됨 (시도 {attempt + 1}): 재작성에 \"{rewritten_double_quotes}, '{rewritten_single_quotes} 발견, 재시도...")
+                        continue
                 
-                if (original_double_quotes != rewritten_double_quotes or 
-                    original_single_quotes != rewritten_single_quotes):
-                    print(f"⚠️ 따옴표 개수 불일치 (시도 {attempt + 1}): 원본 \"{original_double_quotes}, '{original_single_quotes} vs 재작성 \"{rewritten_double_quotes}, '{rewritten_single_quotes}, 재시도...")
-                    continue
+                # 따옴표가 있는 제목에만 엄격한 구조 검증 적용
+                if has_quotes:
+                    structure_words = ["다더니", "라더니", "에서", "드러난", "의", "로", "으로", "월세로"]
+                    original_structure = [word for word in structure_words if word in original_title]
+                    rewritten_structure = [word for word in structure_words if word in rewritten_title]
+                    
+                    if set(original_structure) != set(rewritten_structure):
+                        print(f"⚠️ 구조 단어 불일치 (시도 {attempt + 1}): 원본 {original_structure} vs 재작성 {rewritten_structure}, 재시도...")
+                        continue
                 
-                # 추가 검증: 기본 구조 단어들 확인
-                structure_words = ["다더니", "라더니", "에서", "드러난", "의", "로", "으로", "월세로"]
-                original_structure = [word for word in structure_words if word in original_title]
-                rewritten_structure = [word for word in structure_words if word in rewritten_title]
-                
-                if set(original_structure) != set(rewritten_structure):
-                    print(f"⚠️ 구조 단어 불일치 (시도 {attempt + 1}): 원본 {original_structure} vs 재작성 {rewritten_structure}, 재시도...")
-                    continue
-                
-                # 자연스러운 한국어 검증
+                # 자연스러운 한국어 검증 (모든 제목에 적용)
                 unnatural_patterns = [" 이 안", " 가 안", " 을 안", " 를 안"]
                 if any(pattern in rewritten_title for pattern in unnatural_patterns):
                     print(f"⚠️ 부자연스러운 표현 감지 (시도 {attempt + 1}), 재시도...")
