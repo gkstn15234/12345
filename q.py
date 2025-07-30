@@ -566,8 +566,8 @@ def rewrite_title_with_ai(original_title, content, api_key, api_type="openai"):
             print(f"📝 AI title rewrite attempt {attempt + 1}/3...")
             if api_type == "openai" and HAS_OPENAI:
                 client = OpenAI(api_key=api_key)
-            
-            prompt = f"""
+                
+                prompt = f"""
 원본 제목의 **정확한 구조와 문법을 100% 완벽하게 유지**하되, 본문 내용에 맞게 **따옴표 안의 핵심 내용만 변경**해주세요.
 
 원본 제목: {original_title}
@@ -605,47 +605,50 @@ def rewrite_title_with_ai(original_title, content, api_key, api_type="openai"):
 
 본문 내용에 맞는 **정확하고 자연스러운** 제목만 출력해주세요:
 """
-            
-            response = client.chat.completions.create(
-                model="gpt-4.1",
-                messages=[
-                    {"role": "system", "content": "당신은 제목 구조 보존 전문가입니다. 원본 제목의 정확한 문법과 구조를 100% 유지하면서 내용만 변경하는 것이 핵심입니다. 특히 따옴표는 절대 누락시키면 안 됩니다."},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=200,
-                temperature=0.2  # 더 보수적으로 설정
-            )
-            
-            rewritten_title = response.choices[0].message.content.strip()
-            
-            # 기본 검증: 따옴표 개수 확인
-            original_double_quotes = original_title.count('"')
-            original_single_quotes = original_title.count("'")
-            rewritten_double_quotes = rewritten_title.count('"')
-            rewritten_single_quotes = rewritten_title.count("'")
-            
-            if (original_double_quotes != rewritten_double_quotes or 
-                original_single_quotes != rewritten_single_quotes):
-                print(f"⚠️ 따옴표 개수 불일치 (시도 {attempt + 1}): 원본 \"{original_double_quotes}, '{original_single_quotes} vs 재작성 \"{rewritten_double_quotes}, '{rewritten_single_quotes}, 재시도...")
-                continue
-            
-            # 추가 검증: 기본 구조 단어들 확인
-            structure_words = ["다더니", "라더니", "에서", "드러난", "의", "로", "으로", "월세로"]
-            original_structure = [word for word in structure_words if word in original_title]
-            rewritten_structure = [word for word in structure_words if word in rewritten_title]
-            
-            if set(original_structure) != set(rewritten_structure):
-                print(f"⚠️ 구조 단어 불일치 (시도 {attempt + 1}): 원본 {original_structure} vs 재작성 {rewritten_structure}, 재시도...")
-                continue
-            
-            # 자연스러운 한국어 검증
-            unnatural_patterns = [" 이 안", " 가 안", " 을 안", " 를 안"]
-            if any(pattern in rewritten_title for pattern in unnatural_patterns):
-                print(f"⚠️ 부자연스러운 표현 감지 (시도 {attempt + 1}), 재시도...")
-                continue
-            
-            print(f"✅ 제목 재작성 성공: {rewritten_title}")
-            return rewritten_title
+                
+                response = client.chat.completions.create(
+                    model="gpt-4.1",
+                    messages=[
+                        {"role": "system", "content": "당신은 제목 구조 보존 전문가입니다. 원본 제목의 정확한 문법과 구조를 100% 유지하면서 내용만 변경하는 것이 핵심입니다. 특히 따옴표는 절대 누락시키면 안 됩니다."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    max_tokens=200,
+                    temperature=0.2  # 더 보수적으로 설정
+                )
+                
+                rewritten_title = response.choices[0].message.content.strip()
+                
+                # 기본 검증: 따옴표 개수 확인
+                original_double_quotes = original_title.count('"')
+                original_single_quotes = original_title.count("'")
+                rewritten_double_quotes = rewritten_title.count('"')
+                rewritten_single_quotes = rewritten_title.count("'")
+                
+                if (original_double_quotes != rewritten_double_quotes or 
+                    original_single_quotes != rewritten_single_quotes):
+                    print(f"⚠️ 따옴표 개수 불일치 (시도 {attempt + 1}): 원본 \"{original_double_quotes}, '{original_single_quotes} vs 재작성 \"{rewritten_double_quotes}, '{rewritten_single_quotes}, 재시도...")
+                    continue
+                
+                # 추가 검증: 기본 구조 단어들 확인
+                structure_words = ["다더니", "라더니", "에서", "드러난", "의", "로", "으로", "월세로"]
+                original_structure = [word for word in structure_words if word in original_title]
+                rewritten_structure = [word for word in structure_words if word in rewritten_title]
+                
+                if set(original_structure) != set(rewritten_structure):
+                    print(f"⚠️ 구조 단어 불일치 (시도 {attempt + 1}): 원본 {original_structure} vs 재작성 {rewritten_structure}, 재시도...")
+                    continue
+                
+                # 자연스러운 한국어 검증
+                unnatural_patterns = [" 이 안", " 가 안", " 을 안", " 를 안"]
+                if any(pattern in rewritten_title for pattern in unnatural_patterns):
+                    print(f"⚠️ 부자연스러운 표현 감지 (시도 {attempt + 1}), 재시도...")
+                    continue
+                
+                print(f"✅ 제목 재작성 성공: {rewritten_title}")
+                return rewritten_title
+            else:
+                print(f"⚠️ OpenAI not available or wrong API type: {api_type}")
+                return original_title
             
         except Exception as e:
             print(f"⚠️ Title rewrite attempt {attempt + 1} failed: {e}")
@@ -1083,6 +1086,9 @@ def main():
     processed = 0
     skipped = 0
     failed = 0
+    
+    # 🧪 테스트: 첫 번째 글만 처리
+    urls = urls[:1]
     
     for i, url in enumerate(urls):
         print(f"\n📄 [{i+1}/{len(urls)}] Processing: {url.split('/')[-2:]}")
