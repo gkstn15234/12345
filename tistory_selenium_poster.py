@@ -36,23 +36,42 @@ class TistorySeleniumPoster:
         
         if headless:
             chrome_options.add_argument("--headless=new")  # 최신 headless 모드
+            print("🔧 Headless 모드로 설정")
         
-        # 브라우저 옵션 설정
+        # GitHub Actions 환경을 위한 옵션들
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
         chrome_options.add_argument("--disable-gpu")
-        chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+        chrome_options.add_argument("--disable-software-rasterizer")
+        chrome_options.add_argument("--disable-background-timer-throttling")
+        chrome_options.add_argument("--disable-backgrounding-occluded-windows")
+        chrome_options.add_argument("--disable-renderer-backgrounding")
+        chrome_options.add_argument("--disable-features=TranslateUI")
+        chrome_options.add_argument("--disable-ipc-flooding-protection")
+        
+        # 안정성을 위한 옵션들
         chrome_options.add_argument("--window-size=1920,1080")
+        chrome_options.add_argument("--start-maximized")
+        chrome_options.add_argument("--disable-web-security")
+        chrome_options.add_argument("--disable-features=VizDisplayCompositor")
+        
+        # 자동화 감지 방지
+        chrome_options.add_argument("--disable-blink-features=AutomationControlled")
         chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
         chrome_options.add_experimental_option('useAutomationExtension', False)
         
-        # User-Agent 설정
-        chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+        # User-Agent 설정 (최신)
+        chrome_options.add_argument("--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
         
         # Chrome 바이너리 경로 설정 (GitHub Actions)
         chrome_bin = os.environ.get('CHROME_BIN')
         if chrome_bin:
             chrome_options.binary_location = chrome_bin
+            print(f"🔧 Chrome 바이너리 경로: {chrome_bin}")
+        
+        # 로깅 레벨 설정
+        chrome_options.add_argument("--log-level=3")  # WARNING 레벨만 출력
+        chrome_options.add_argument("--silent")
         
         try:
             # WebDriver Manager를 통한 자동 ChromeDriver 설치
@@ -80,37 +99,119 @@ class TistorySeleniumPoster:
             
             # 티스토리 로그인 페이지 접속
             self.driver.get("https://www.tistory.com/auth/login")
-            time.sleep(2)
+            time.sleep(5)  # 대기 시간 증가
             
-            # 이메일 입력
-            email_input = WebDriverWait(self.driver, 10).until(
-                EC.presence_of_element_located((By.NAME, "loginId"))
-            )
+            print(f"📍 현재 URL: {self.driver.current_url}")
+            print(f"📄 페이지 제목: {self.driver.title}")
+            
+            # 이메일 입력 - 다양한 선택자 시도
+            email_selectors = [
+                (By.NAME, "loginId"),
+                (By.ID, "loginId"),
+                (By.CSS_SELECTOR, "input[name='loginId']"),
+                (By.CSS_SELECTOR, "input[type='email']"),
+                (By.CSS_SELECTOR, "input[placeholder*='이메일'], input[placeholder*='email']")
+            ]
+            
+            email_input = None
+            for selector_type, selector_value in email_selectors:
+                try:
+                    email_input = WebDriverWait(self.driver, 10).until(
+                        EC.presence_of_element_located((selector_type, selector_value))
+                    )
+                    print(f"✅ 이메일 입력창 찾음: {selector_type} = {selector_value}")
+                    break
+                except:
+                    continue
+            
+            if not email_input:
+                print("❌ 이메일 입력창을 찾을 수 없습니다.")
+                return False
+            
             email_input.clear()
             email_input.send_keys(self.email)
+            time.sleep(1)
             
-            # 비밀번호 입력
-            password_input = self.driver.find_element(By.NAME, "password")
+            # 비밀번호 입력 - 다양한 선택자 시도
+            password_selectors = [
+                (By.NAME, "password"),
+                (By.ID, "password"),
+                (By.CSS_SELECTOR, "input[name='password']"),
+                (By.CSS_SELECTOR, "input[type='password']")
+            ]
+            
+            password_input = None
+            for selector_type, selector_value in password_selectors:
+                try:
+                    password_input = self.driver.find_element(selector_type, selector_value)
+                    print(f"✅ 비밀번호 입력창 찾음: {selector_type} = {selector_value}")
+                    break
+                except:
+                    continue
+            
+            if not password_input:
+                print("❌ 비밀번호 입력창을 찾을 수 없습니다.")
+                return False
+                
             password_input.clear()
             password_input.send_keys(self.password)
+            time.sleep(1)
             
-            # 로그인 버튼 클릭
-            login_button = self.driver.find_element(By.XPATH, "//button[@type='submit']")
-            login_button.click()
+            # 로그인 버튼 클릭 - 다양한 선택자 시도
+            login_button_selectors = [
+                "//button[@type='submit']",
+                "//button[contains(text(), '로그인')]",
+                "//input[@type='submit']",
+                "//a[contains(text(), '로그인')]",
+                "//*[@id='loginBtn']"
+            ]
             
-            # 로그인 완료 대기
-            time.sleep(3)
+            login_clicked = False
+            for button_xpath in login_button_selectors:
+                try:
+                    login_button = self.driver.find_element(By.XPATH, button_xpath)
+                    login_button.click()
+                    print(f"✅ 로그인 버튼 클릭: {button_xpath}")
+                    login_clicked = True
+                    break
+                except:
+                    continue
             
-            # 로그인 성공 확인
-            if "manage" in self.driver.current_url or "tistory.com" in self.driver.current_url:
+            if not login_clicked:
+                print("❌ 로그인 버튼을 찾을 수 없습니다.")
+                return False
+            
+            # 로그인 완료 대기 (더 길게)
+            time.sleep(8)
+            
+            # 현재 상태 확인
+            print(f"📍 로그인 후 URL: {self.driver.current_url}")
+            print(f"📄 로그인 후 제목: {self.driver.title}")
+            
+            # 로그인 성공 확인 - 더 관대한 조건
+            current_url = self.driver.current_url.lower()
+            page_source = self.driver.page_source.lower()
+            
+            success_indicators = [
+                "manage" in current_url,
+                "blog" in current_url,
+                "tistory.com" in current_url and "login" not in current_url,
+                "관리" in page_source,
+                "글쓰기" in page_source,
+                "dashboard" in page_source
+            ]
+            
+            if any(success_indicators):
                 print("✅ 티스토리 로그인 성공!")
                 return True
             else:
-                print("❌ 로그인 실패")
+                print("❌ 로그인 실패 - 성공 지표를 찾을 수 없습니다.")
+                print(f"   현재 URL: {current_url}")
                 return False
                 
         except Exception as e:
             print(f"❌ 로그인 오류: {e}")
+            print(f"   현재 URL: {self.driver.current_url if self.driver else 'N/A'}")
             return False
     
     def write_post(self, title, content, tags=None, is_draft=True):
