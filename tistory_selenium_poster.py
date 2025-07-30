@@ -93,24 +93,59 @@ class TistorySeleniumPoster:
             return False
     
     def login_tistory(self):
-        """티스토리 로그인"""
+        """티스토리 카카오 로그인"""
         try:
-            print("🔐 티스토리 로그인 중...")
+            print("🔐 티스토리 카카오 로그인 중...")
             
             # 티스토리 로그인 페이지 접속
             self.driver.get("https://www.tistory.com/auth/login")
-            time.sleep(5)  # 대기 시간 증가
+            time.sleep(5)
             
             print(f"📍 현재 URL: {self.driver.current_url}")
             print(f"📄 페이지 제목: {self.driver.title}")
             
-            # 이메일 입력 - 다양한 선택자 시도
+            # 카카오 로그인 버튼 찾기 및 클릭
+            kakao_login_selectors = [
+                (By.CLASS_NAME, "btn_login.link_kakao_id"),
+                (By.CSS_SELECTOR, ".btn_login.link_kakao_id"),
+                (By.CSS_SELECTOR, "a[href*='kakao']"),
+                (By.XPATH, "//a[contains(@class, 'kakao') or contains(text(), '카카오')]"),
+                (By.XPATH, "//button[contains(@class, 'kakao') or contains(text(), '카카오')]"),
+                (By.CSS_SELECTOR, ".link_kakao_id"),
+                (By.CSS_SELECTOR, "a[title*='카카오'], a[title*='kakao']")
+            ]
+            
+            kakao_button_clicked = False
+            for selector_type, selector_value in kakao_login_selectors:
+                try:
+                    kakao_button = WebDriverWait(self.driver, 10).until(
+                        EC.element_to_be_clickable((selector_type, selector_value))
+                    )
+                    kakao_button.click()
+                    print(f"✅ 카카오 로그인 버튼 클릭: {selector_type} = {selector_value}")
+                    kakao_button_clicked = True
+                    break
+                except:
+                    continue
+            
+            if not kakao_button_clicked:
+                print("❌ 카카오 로그인 버튼을 찾을 수 없습니다.")
+                return False
+            
+            # 카카오 로그인 페이지 로딩 대기
+            time.sleep(5)
+            
+            print(f"📍 카카오 로그인 페이지 URL: {self.driver.current_url}")
+            print(f"📄 카카오 로그인 페이지 제목: {self.driver.title}")
+            
+            # 카카오 계정 이메일 입력
             email_selectors = [
-                (By.NAME, "loginId"),
-                (By.ID, "loginId"),
-                (By.CSS_SELECTOR, "input[name='loginId']"),
+                (By.NAME, "email"),
+                (By.ID, "id_email_2"),
+                (By.CSS_SELECTOR, "input[name='email']"),
                 (By.CSS_SELECTOR, "input[type='email']"),
-                (By.CSS_SELECTOR, "input[placeholder*='이메일'], input[placeholder*='email']")
+                (By.CSS_SELECTOR, "input[placeholder*='이메일'], input[placeholder*='email']"),
+                (By.CSS_SELECTOR, "#loginId--1")
             ]
             
             email_input = None
@@ -130,14 +165,15 @@ class TistorySeleniumPoster:
             
             email_input.clear()
             email_input.send_keys(self.email)
-            time.sleep(1)
+            time.sleep(2)
             
-            # 비밀번호 입력 - 다양한 선택자 시도
+            # 카카오 계정 비밀번호 입력
             password_selectors = [
                 (By.NAME, "password"),
-                (By.ID, "password"),
+                (By.ID, "password--2"),
                 (By.CSS_SELECTOR, "input[name='password']"),
-                (By.CSS_SELECTOR, "input[type='password']")
+                (By.CSS_SELECTOR, "input[type='password']"),
+                (By.CSS_SELECTOR, "#password--2")
             ]
             
             password_input = None
@@ -155,34 +191,36 @@ class TistorySeleniumPoster:
                 
             password_input.clear()
             password_input.send_keys(self.password)
-            time.sleep(1)
+            time.sleep(2)
             
-            # 로그인 버튼 클릭 - 다양한 선택자 시도
+            # 카카오 로그인 버튼 클릭
             login_button_selectors = [
-                "//button[@type='submit']",
-                "//button[contains(text(), '로그인')]",
-                "//input[@type='submit']",
-                "//a[contains(text(), '로그인')]",
-                "//*[@id='loginBtn']"
+                (By.CLASS_NAME, "btn_g.btn_confirm.submit"),
+                (By.CSS_SELECTOR, ".btn_g.btn_confirm.submit"),
+                (By.CSS_SELECTOR, "button[type='submit']"),
+                (By.XPATH, "//button[contains(@class, 'btn_confirm') or contains(@class, 'submit')]"),
+                (By.XPATH, "//button[contains(text(), '로그인')]"),
+                (By.CSS_SELECTOR, ".submit"),
+                (By.CSS_SELECTOR, "button.btn_g")
             ]
             
             login_clicked = False
-            for button_xpath in login_button_selectors:
+            for selector_type, selector_value in login_button_selectors:
                 try:
-                    login_button = self.driver.find_element(By.XPATH, button_xpath)
+                    login_button = self.driver.find_element(selector_type, selector_value)
                     login_button.click()
-                    print(f"✅ 로그인 버튼 클릭: {button_xpath}")
+                    print(f"✅ 카카오 로그인 버튼 클릭: {selector_type} = {selector_value}")
                     login_clicked = True
                     break
                 except:
                     continue
             
             if not login_clicked:
-                print("❌ 로그인 버튼을 찾을 수 없습니다.")
+                print("❌ 카카오 로그인 버튼을 찾을 수 없습니다.")
                 return False
             
             # 로그인 완료 대기 (더 길게)
-            time.sleep(8)
+            time.sleep(10)
             
             # 현재 상태 확인
             print(f"📍 로그인 후 URL: {self.driver.current_url}")
@@ -195,14 +233,15 @@ class TistorySeleniumPoster:
             success_indicators = [
                 "manage" in current_url,
                 "blog" in current_url,
-                "tistory.com" in current_url and "login" not in current_url,
+                "tistory.com" in current_url and "login" not in current_url and "auth" not in current_url,
                 "관리" in page_source,
                 "글쓰기" in page_source,
-                "dashboard" in page_source
+                "dashboard" in page_source,
+                "블로그" in page_source
             ]
             
             if any(success_indicators):
-                print("✅ 티스토리 로그인 성공!")
+                print("✅ 티스토리 카카오 로그인 성공!")
                 return True
             else:
                 print("❌ 로그인 실패 - 성공 지표를 찾을 수 없습니다.")
