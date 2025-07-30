@@ -1519,6 +1519,92 @@ def main():
     except Exception as e:
         print(f"⚠️ Could not check database: {e}")
     
+    # 🚀 티스토리 자동 포스팅
+    print(f"\n🚀 티스토리 자동 포스팅 시작...")
+    try:
+        # 처리된 글들을 티스토리 포스팅용으로 변환
+        tistory_articles = []
+        
+        # 최근 생성된 마크다운 파일들을 읽어서 포스팅 데이터 생성
+        content_dir = 'content'
+        if os.path.exists(content_dir):
+            for root, dirs, files in os.walk(content_dir):
+                for file in files:
+                    if file.endswith('.md'):
+                        filepath = os.path.join(root, file)
+                        try:
+                            with open(filepath, 'r', encoding='utf-8') as f:
+                                md_content = f.read()
+                            
+                            # YAML 헤더에서 메타데이터 추출
+                            if md_content.startswith('---'):
+                                parts = md_content.split('---', 2)
+                                if len(parts) >= 3:
+                                    yaml_header = parts[1]
+                                    content_body = parts[2].strip()
+                                    
+                                    # 제목 추출
+                                    title_match = re.search(r'title:\s*"([^"]+)"', yaml_header)
+                                    title = title_match.group(1) if title_match else "제목 없음"
+                                    
+                                    # 태그 추출
+                                    tags_match = re.search(r'tags:\s*\[(.*?)\]', yaml_header)
+                                    tags = []
+                                    if tags_match:
+                                        tags_str = tags_match.group(1)
+                                        tags = [tag.strip().strip('"\'') for tag in tags_str.split(',')]
+                                    
+                                    # 마크다운을 HTML로 간단 변환
+                                    html_content = content_body.replace('\n\n', '</p><p>')
+                                    html_content = f"<p>{html_content}</p>"
+                                    html_content = re.sub(r'## ([^\n]+)', r'<h2>\1</h2>', html_content)
+                                    html_content = re.sub(r'\*\*([^*]+)\*\*', r'<strong>\1</strong>', html_content)
+                                    
+                                    tistory_articles.append({
+                                        'title': title,
+                                        'content': html_content,
+                                        'tags': tags + ['AI재작성', '자동포스팅']
+                                    })
+                                    
+                                    # 최대 3개까지만 포스팅 (안전을 위해)
+                                    if len(tistory_articles) >= 3:
+                                        break
+                        except Exception as e:
+                            print(f"⚠️ 파일 읽기 오류 ({file}): {e}")
+                            continue
+                
+                if len(tistory_articles) >= 3:
+                    break
+        
+        # 티스토리 포스팅 실행
+        if tistory_articles:
+            print(f"📝 {len(tistory_articles)}개 글을 티스토리에 임시발행으로 포스팅합니다...")
+            
+            # Selenium 포스터 import 및 실행
+            try:
+                from tistory_selenium_poster import TistorySeleniumPoster
+                
+                poster = TistorySeleniumPoster()
+                success_count, fail_count = poster.auto_post_articles(
+                    tistory_articles, 
+                    headless=True  # GitHub Actions에서는 headless 모드
+                )
+                
+                print(f"✅ 티스토리 포스팅 완료!")
+                print(f"   성공: {success_count}개")
+                print(f"   실패: {fail_count}개")
+                
+            except ImportError:
+                print("⚠️ Selenium 모듈을 찾을 수 없습니다. pip install selenium 필요")
+            except Exception as e:
+                print(f"⚠️ 티스토리 포스팅 오류: {e}")
+        else:
+            print("⚠️ 포스팅할 글이 없습니다.")
+            
+    except Exception as e:
+        print(f"⚠️ 티스토리 포스팅 처리 오류: {e}")
+        print("📧 Skipping Tistory posting...")
+    
     # 📧 이메일 보고서 발송
     print(f"\n📧 Sending email report...")
     try:
