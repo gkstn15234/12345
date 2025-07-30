@@ -1,0 +1,107 @@
+Run wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+Warning: apt-key is deprecated. Manage keyring files in trusted.gpg.d instead (see apt-key(8)).
+OK
+Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+Hit:2 http://azure.archive.ubuntu.com/ubuntu noble InRelease
+Get:3 http://azure.archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]
+Get:4 http://azure.archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]
+Hit:6 https://packages.microsoft.com/repos/azure-cli noble InRelease
+Get:5 http://azure.archive.ubuntu.com/ubuntu noble-security InRelease [126 kB]
+Get:7 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease [3600 B]
+Get:8 http://dl.google.com/linux/chrome/deb stable InRelease [1825 B]
+Get:9 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [1310 kB]
+Get:10 http://azure.archive.ubuntu.com/ubuntu noble-updates/main Translation-en [263 kB]
+Get:11 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Components [163 kB]
+Get:12 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [1116 kB]
+Get:13 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe Translation-en [286 kB]
+Get:14 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Components [377 kB]
+Get:15 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [1640 kB]
+Get:16 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted Translation-en [358 kB]
+Get:17 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Components [212 B]
+Get:18 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Components [940 B]
+Get:19 http://azure.archive.ubuntu.com/ubuntu noble-backports/main amd64 Components [7076 B]
+Get:20 http://azure.archive.ubuntu.com/ubuntu noble-backports/universe amd64 Components [28.3 kB]
+Get:21 http://azure.archive.ubuntu.com/ubuntu noble-backports/restricted amd64 Components [216 B]
+Get:22 http://azure.archive.ubuntu.com/ubuntu noble-backports/multiverse amd64 Components [212 B]
+Get:23 http://azure.archive.ubuntu.com/ubuntu noble-security/main amd64 Packages [1052 kB]
+Get:24 http://azure.archive.ubuntu.com/ubuntu noble-security/main Translation-en [183 kB]
+Get:25 http://azure.archive.ubuntu.com/ubuntu noble-security/main amd64 Components [21.6 kB]
+Get:26 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 Packages [879 kB]
+Get:27 http://azure.archive.ubuntu.com/ubuntu noble-security/universe Translation-en [194 kB]
+Get:28 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 Components [52.2 kB]
+Get:29 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted amd64 Packages [1554 kB]
+Get:30 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted Translation-en [341 kB]
+Get:31 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted amd64 Components [212 B]
+Get:32 http://azure.archive.ubuntu.com/ubuntu noble-security/multiverse amd64 Components [212 B]
+Get:33 https://packages.microsoft.com/ubuntu/24.04/prod noble/main arm64 Packages [31.4 kB]
+Get:34 https://packages.microsoft.com/ubuntu/24.04/prod noble/main armhf Packages [9807 B]
+Get:35 https://packages.microsoft.com/ubuntu/24.04/prod noble/main amd64 Packages [46.0 kB]
+Get:36 http://dl.google.com/linux/chrome/deb stable/main amd64 Packages [1222 B]
+Fetched 10.3 MB in 1s (7874 kB/s)
+Reading package lists...
+Reading package lists...
+Building dependency tree...
+Reading state information...
+The following packages will be upgraded:
+  google-chrome-stable
+1 upgraded, 0 newly installed, 0 to remove and 23 not upgraded.
+Need to get 118 MB of archives.
+After this operation, 819 kB disk space will be freed.
+Get:1 http://dl.google.com/linux/chrome/deb stable/main amd64 google-chrome-stable amd64 138.0.7204.183-1 [118 MB]
+Fetched 118 MB in 1s (83.0 MB/s)
+(Reading database ... 
+(Reading database ... 5%
+(Reading database ... 10%
+(Reading database ... 15%
+(Reading database ... 20%
+(Reading database ... 25%
+(Reading database ... 30%
+(Reading database ... 35%
+(Reading database ... 40%
+(Reading database ... 45%
+(Reading database ... 50%
+(Reading database ... 55%
+(Reading database ... 60%
+(Reading database ... 65%
+(Reading database ... 70%
+(Reading database ... 75%
+(Reading database ... 80%
+(Reading database ... 85%
+(Reading database ... 90%
+(Reading database ... 95%
+(Reading database ... 100%
+(Reading database ... 219824 files and directories currently installed.)
+Preparing to unpack .../google-chrome-stable_138.0.7204.183-1_amd64.deb ...
+Unpacking google-chrome-stable (138.0.7204.183-1) over (138.0.7204.168-1) ...
+Setting up google-chrome-stable (138.0.7204.183-1) ...
+Processing triggers for man-db (2.12.0-4build2) ...
+Running kernel seems to be up-to-date.
+Restarting services...
+Service restarts being deferred:
+ systemctl restart hosted-compute-agent.service
+No containers need to be restarted.
+No user sessions are running outdated binaries.
+No VM guests are running outdated hypervisor (qemu) binaries on this host.
+--2025-07-30 20:37:27--  https://chromedriver.storage.googleapis.com/%3C?xml%20version='1.0'%20encoding='UTF-8'?%3E%3CError%3E%3CCode%3ENoSuchKey%3C/Code%3E%3CMessage%3EThe%20specified%20key%20does%20not%20exist.%3C/Message%3E%3CDetails%3ENo%20such%20object:%20chromedriver/LATEST_RELEASE_138.0%3C/Details%3E%3C/Error%3E/chromedriver_linux64.zip
+Resolving chromedriver.storage.googleapis.com (chromedriver.storage.googleapis.com)... 142.250.191.251, 142.250.190.91, 142.250.190.123, ...
+Connecting to chromedriver.storage.googleapis.com (chromedriver.storage.googleapis.com)|142.250.191.251|:443... connected.
+HTTP request sent, awaiting response... 404 Not Found
+2025-07-30 20:37:27 ERROR 404: Not Found.
+Error: Process completed with exit code 8.
+0s
+0s
+0s
+0s
+1s
+Post job cleanup.
+/usr/bin/git version
+git version 2.50.1
+Temporarily overriding HOME='/home/runner/work/_temp/63869c58-a70b-4f3e-8020-0de6abba458d' before making global git config changes
+Adding repository directory to the temporary git global config as a safe directory
+/usr/bin/git config --global --add safe.directory /home/runner/work/1/1
+/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+http.https://github.com/.extraheader
+/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"

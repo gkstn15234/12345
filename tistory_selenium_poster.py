@@ -11,9 +11,17 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.chrome.service import Service
 import time
 import random
 import os
+
+# webdriver-manager import
+try:
+    from webdriver_manager.chrome import ChromeDriverManager
+    HAS_WEBDRIVER_MANAGER = True
+except ImportError:
+    HAS_WEBDRIVER_MANAGER = False
 
 class TistorySeleniumPoster:
     def __init__(self):
@@ -27,26 +35,42 @@ class TistorySeleniumPoster:
         chrome_options = Options()
         
         if headless:
-            chrome_options.add_argument("--headless")
+            chrome_options.add_argument("--headless=new")  # 최신 headless 모드
         
         # 브라우저 옵션 설정
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
+        chrome_options.add_argument("--disable-gpu")
         chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+        chrome_options.add_argument("--window-size=1920,1080")
         chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
         chrome_options.add_experimental_option('useAutomationExtension', False)
         
         # User-Agent 설정
         chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
         
+        # Chrome 바이너리 경로 설정 (GitHub Actions)
+        chrome_bin = os.environ.get('CHROME_BIN')
+        if chrome_bin:
+            chrome_options.binary_location = chrome_bin
+        
         try:
-            self.driver = webdriver.Chrome(options=chrome_options)
+            # WebDriver Manager를 통한 자동 ChromeDriver 설치
+            if HAS_WEBDRIVER_MANAGER:
+                service = Service(ChromeDriverManager().install())
+                self.driver = webdriver.Chrome(service=service, options=chrome_options)
+                print("✅ ChromeDriverManager로 드라이버 설정 완료")
+            else:
+                # 기본 방식 (로컬에서)
+                self.driver = webdriver.Chrome(options=chrome_options)
+                print("✅ 기본 Chrome 드라이버 설정 완료")
+            
             self.driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
-            print("✅ Chrome 드라이버 설정 완료")
             return True
+            
         except Exception as e:
             print(f"❌ 드라이버 설정 실패: {e}")
-            print("💡 ChromeDriver가 설치되어 있는지 확인하세요.")
+            print("💡 Chrome 또는 ChromeDriver가 설치되어 있는지 확인하세요.")
             return False
     
     def login_tistory(self):
