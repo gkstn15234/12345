@@ -919,9 +919,13 @@ alt 텍스트만 출력해주세요:
 def generate_article_html(article_data, cloudflare_images=None):
     """티스토리 포스팅용 HTML 생성"""
     title = article_data.get('title', '제목 없음')
+    safe_title = title.replace(" ", "_")
     content = article_data.get('content', '')
     tags = article_data.get('tags', [])
     original_url = article_data.get('url', '')
+    
+    # f-string에서 사용할 수 있도록 미리 처리
+    backslash = chr(92)
     
     # 이미지가 있으면 첫 번째 이미지를 썸네일로 사용
     thumbnail_img = ""
@@ -988,7 +992,7 @@ def generate_article_html(article_data, cloudflare_images=None):
     
     <script>
         function copyContent() {{
-            const content = `{html_content.replace('`', '\\`')}`;
+            const content = `{html_content.replace('`', backslash + '`')}`;
             navigator.clipboard.writeText(content).then(() => {{
                 alert('티스토리용 HTML이 클립보드에 복사되었습니다!');
             }});
@@ -1000,7 +1004,7 @@ def generate_article_html(article_data, cloudflare_images=None):
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = '{title.replace(" ", "_")}.html';
+            a.download = '{safe_title}.html';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
