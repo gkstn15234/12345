@@ -48,7 +48,15 @@ jobs:
     - name: Run AI article generator and Tistory poster
       env:
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        CLOUDFLARE_API_TOKEN: HGa9Eyioyu2fvj0h-1Gq4LeVbWgnVnN7Dx2Yjz7p
       run: |
         python q.py
         
-    # 더 이상 파일 생성하지 않음 - 티스토리에 직접 포스팅
+    - name: Deploy to Cloudflare Pages
+      uses: cloudflare/pages-action@v1
+      with:
+        apiToken: HGa9Eyioyu2fvj0h-1Gq4LeVbWgnVnN7Dx2Yjz7p
+        accountId: 5778a7b9867a82c2c6ad6d104d5ebb6d
+        projectName: 12345-82w
+        directory: output
+        gitHubToken: ${{ secrets.GITHUB_TOKEN }}

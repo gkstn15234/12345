@@ -1651,6 +1651,13 @@ def main():
             print(f"\n📄 articles.json 생성: {json_filepath}")
             print(f"🔗 JavaScript에서 사용할 수 있는 데이터 파일이 생성되었습니다.")
             
+            # 인덱스 HTML 생성
+            index_html = generate_index_html(articles_info)
+            index_filepath = os.path.join(output_dir, 'index.html')
+            with open(index_filepath, 'w', encoding='utf-8') as f:
+                f.write(index_html)
+            print(f"📄 index.html 생성: {index_filepath}")
+            
         except Exception as e:
             print(f"❌ articles.json 생성 실패: {e}")
 
