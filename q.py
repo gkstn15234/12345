@@ -705,21 +705,22 @@ def extract_content_from_url(url):
         # 기본 태그 설정
         tags = ["뉴스", "이슈"]  # 기본 태그
         
-        # 티스토리 내용 추출
-        content_elem = soup.find('div', class_='entry-content')
-        if not content_elem:
-            # 다른 가능한 클래스명들 시도
-            content_selectors = [
-                '.article_view',
-                '.post-content',
-                '.contents_style',
-                '.post_ct'
-            ]
-            
-            for selector in content_selectors:
-                content_elem = soup.select_one(selector)
-                if content_elem:
-                    break
+        # 티스토리 내용 추출 (새로운 구조 우선 적용)
+        content_elem = None
+        content_selectors = [
+            'div.tt_article_useless_p_margin.contents_style',  # 새로운 티스토리 구조
+            'div.entry-content',
+            'div.article_view',
+            'div.post-content', 
+            'div.contents_style',
+            'div.post_ct'
+        ]
+        
+        for selector in content_selectors:
+            content_elem = soup.select_one(selector)
+            if content_elem and content_elem.get_text(strip=True):  # 내용이 있는지 확인
+                print(f"✅ Found content with selector: {selector}")
+                break
         
         if not content_elem:
             return None
