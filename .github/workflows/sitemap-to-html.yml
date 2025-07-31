@@ -52,11 +52,14 @@ jobs:
       run: |
         python q.py
         
-    - name: Deploy to Cloudflare Pages
-      uses: cloudflare/pages-action@v1
+    - name: Upload generated files as artifact
+      uses: actions/upload-artifact@v4
       with:
-        apiToken: HGa9Eyioyu2fvj0h-1Gq4LeVbWgnVnN7Dx2Yjz7p
-        accountId: 5778a7b9867a82c2c6ad6d104d5ebb6d
-        projectName: 12345-82w
-        directory: output
-        gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+        name: generated-html-files
+        path: output/
+        
+    - name: List generated files
+      run: |
+        echo "Generated files:"
+        ls -la output/
+        echo "Files ready for manual Cloudflare Pages deployment"

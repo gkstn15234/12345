@@ -1652,7 +1652,7 @@ def main():
             print(f"🔗 JavaScript에서 사용할 수 있는 데이터 파일이 생성되었습니다.")
             
             # 인덱스 HTML 생성
-            index_html = generate_index_html(articles_info)
+            index_html = generate_index_html(generated_articles)
             index_filepath = os.path.join(output_dir, 'index.html')
             with open(index_filepath, 'w', encoding='utf-8') as f:
                 f.write(index_html)
