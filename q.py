@@ -1454,6 +1454,7 @@ def main():
     
     for i, url in enumerate(urls):
         print(f"\n📄 [{i+1}/{len(urls)}] Processing: {url.split('/')[-2:]}")
+        print(f"🔗 Full URL: {url}")  # 전체 URL 확인용
         
         # 🛡️ URL 기반 사전 중복 체크 (빠른 스킵)
         if os.path.exists(db_path):
@@ -1468,12 +1469,23 @@ def main():
                 skipped += 1
                 continue
         
+        print(f"🕷️ Crawling content from URL...")
         article_data = extract_content_from_url(url)
+        
+        if article_data:
+            print(f"✅ Crawled title: {article_data.get('title', 'No title')}")
+            print(f"📝 Content length: {len(article_data.get('content', ''))} characters")
+        else:
+            print(f"❌ Failed to crawl content")
         
         if article_data:
             # AI로 글 재작성
             try:
                 if ai_api_key:
+                    print(f"🤖 Starting AI rewrite...")
+                    print(f"📰 Original title: {article_data['title']}")
+                    print(f"📄 Original content preview: {article_data['content'][:200]}...")
+                    
                     # 제목 재작성
                     new_title = rewrite_title_with_ai(
                         article_data['title'],
