@@ -1019,6 +1019,7 @@ def generate_article_html(article_data, cloudflare_images=None):
 def generate_index_html(articles_info):
     """전체 글 목록을 보여주는 인덱스 홈페이지 생성"""
     articles_html = ""
+    base_url = "https://12345-82w.pages.dev"
     
     for i, article in enumerate(articles_info, 1):
         title = article.get('title', '제목 없음')
@@ -1036,12 +1037,12 @@ def generate_index_html(articles_info):
                 {thumbnail_img}
             </div>
             <div class="article-info">
-                <h3><a href="{filename}" target="_blank">{title}</a></h3>
+                <h3><a href="{base_url}/{filename}" target="_blank">{title}</a></h3>
                 <div class="article-tags">
                     {' '.join([f'<span class="tag">{tag}</span>' for tag in tags[:3]])}
                 </div>
                 <div class="article-actions">
-                    <a href="{filename}" class="btn-view" target="_blank">미리보기</a>
+                    <a href="{base_url}/{filename}" class="btn-view" target="_blank">미리보기</a>
                     <button class="btn-copy" onclick="copyArticleUrl('{filename}')">링크 복사</button>
                 </div>
             </div>
@@ -1213,7 +1214,7 @@ def generate_index_html(articles_info):
     
     <script>
         function copyArticleUrl(filename) {{
-            const url = window.location.origin + '/' + filename;
+            const url = 'https://12345-82w.pages.dev/' + filename;
             navigator.clipboard.writeText(url).then(() => {{
                 alert('링크가 클립보드에 복사되었습니다!\\n' + url);
             }});
@@ -1398,10 +1399,12 @@ def main():
                     if '/entry/' in url:
                         entry_urls.append(url)
     
-    # URL 리스트 준비
-    urls = entry_urls
+    # URL 리스트 준비 (테스트용 1개만 처리)
+    urls = entry_urls[:1]  # 첫 번째 글만 처리
     import random
-    random.shuffle(urls)  # 순서 섞기
+    if len(entry_urls) > 1:
+        random.shuffle(entry_urls)
+        urls = entry_urls[:1]  # 랜덤하게 섞은 후 1개만 선택
     
     # 티스토리 글을 HTML로 변환 계획
     total_articles = len(urls)
